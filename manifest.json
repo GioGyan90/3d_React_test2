@@ -1,0 +1,9 @@
+{
+  "short_name": "QXLab",
+  "name": "QX labs - 咸休全息决策实验室",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}
