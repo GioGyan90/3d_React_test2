@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/GioGyan90/3d_React_test2/static/css/main.1581e78e.css",
+    "main.js": "/GioGyan90/3d_React_test2/static/js/main.2bcee77d.js",
+    "index.html": "/GioGyan90/3d_React_test2/index.html",
+    "main.1581e78e.css.map": "/GioGyan90/3d_React_test2/static/css/main.1581e78e.css.map",
+    "main.2bcee77d.js.map": "/GioGyan90/3d_React_test2/static/js/main.2bcee77d.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.1581e78e.css",
+    "static/js/main.2bcee77d.js"
+  ]
+}
