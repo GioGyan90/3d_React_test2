@@ -98,10 +98,12 @@ function start(): void {
   syncLoopButton();
 
   let last = performance.now();
+  // Pausing a hidden tab should not count its idle time on the first visible frame.
+  document.addEventListener('visibilitychange', () => { last = performance.now(); });
   let width = 0;
   let height = 0;
   function render(now: number): void {
-    const dt = Math.min(0.05, Math.max(0, (now - last) / 1000));
+    const dt = Math.max(0, (now - last) / 1000);
     last = now;
     const box = showcase.getBoundingClientRect();
     const nextWidth = Math.round(box.width);

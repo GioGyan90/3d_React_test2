@@ -11,38 +11,33 @@ const FIRE_VERT = /* glsl */`
   attribute float aHeight;
   attribute float aSize;
 
-  uniform float uTime, uGrow, uContract, uRadius, uPixelRatio, uSizeMul;
-
+  uniform float uTime, uGrow, uExtinguish, uRadius, uPixelRatio, uSizeMul;
   varying float vHeat;
   varying float vFade;
 
   void main() {
     float seed = aSeed;
     float life = fract(uTime * (0.5 + seed * 0.55) + seed * 3.731);
-
-    float ang = aAng + uTime * (0.35 + seed * 0.75) + uContract * 2.6;
-    float baseR = uRadius * (0.62 + aRad * 0.62);
-    float r = baseR * mix(1.0, 0.02, uContract);
-
+    float ang = aAng + uTime * (0.35 + seed * 0.75);
+    float r = uRadius * (0.62 + aRad * 0.62);
     float h = aHeight * (0.34 + uGrow * 0.52);
-    float y = life * h * (1.0 - uContract * 0.92);
-
-    r += sin(seed * 41.0 + uTime * 3.4) * 0.030 * (1.0 - uContract);
-    y += sin(seed * 23.0 + uTime * 7.0 + aAng * 2.0) * 0.018 * (1.0 - uContract);
-
+    // The last embers continue rising as the fuel fades, rather than moving into the centre.
+    float y = life * h + uExtinguish * (0.10 + life * 0.22);
+    r += sin(seed * 41.0 + uTime * 3.4) * 0.030;
+    y += sin(seed * 23.0 + uTime * 7.0 + aAng * 2.0) * 0.018;
     vec3 pos = vec3(cos(ang) * r, y, sin(ang) * r);
-    pos.x += sin(uTime * 5.1 + seed * 17.0) * 0.012 * (1.0 - uContract);
-    pos.z += cos(uTime * 4.3 + seed * 11.0) * 0.012 * (1.0 - uContract);
+    pos.x += sin(uTime * 5.1 + seed * 17.0) * 0.012;
+    pos.z += cos(uTime * 4.3 + seed * 11.0) * 0.012;
 
     vec4 mv = modelViewMatrix * vec4(pos, 1.0);
     gl_Position = projectionMatrix * mv;
-
     float sz = aSize * uSizeMul * uPixelRatio * uGrow
-             * (1.0 - life * 0.5) * mix(1.0, 0.42, uContract);
+             * (1.0 - life * 0.5) * mix(1.0, 0.72, uExtinguish);
     gl_PointSize = sz * length(modelMatrix[0].xyz) * (2.4 / max(0.001, -mv.z));
-
+    float emberFade = 1.0 - smoothstep(0.35, 1.0, uExtinguish);
+    float noNewSparks = smoothstep(0.0, 0.22, life + (1.0 - uExtinguish) * 0.4);
     vHeat = life;
-    vFade = uGrow * (1.0 - smoothstep(0.60, 1.0, life)) * (1.0 - uContract * 0.92);
+    vFade = uGrow * (1.0 - smoothstep(0.60, 1.0, life)) * emberFade * noNewSparks;
   }
 `;
 
@@ -128,7 +123,7 @@ export class FireEffect extends BaseEffect {
       uniforms: {
         uTime: { value: 0 },
         uGrow: { value: 0 },
-        uContract: { value: 0 },
+        uExtinguish: { value: 0 },
         uRadius: { value: RING_R },
         uPixelRatio: { value: 1 },
         uSizeMul: { value: sizeMul },
@@ -181,38 +176,25 @@ export class FireEffect extends BaseEffect {
   }
 
   update() {
-    const T = this.t;
-    let grow, contract;
+    // Time is normalized so a custom duration preserves these phases.
+    const progress = clamp01(this.t / this.duration);
+    const grow = smooth01(progress / 0.19);
+    const extinguish = smooth01((progress - 0.56) / 0.44);
 
-    if (T < 0) {
-      // 待机：余烬微弱呼吸
-      grow = 0.13 + 0.03 * Math.sin(this.time * 1.8);
-      contract = 0;
-    } else {
-      grow = smooth01(T / 0.65);
-      contract = smooth01((T - 2.45) / 1.05);
+    for (const material of [...this.mats, ...this.flameMats]) {
+      material.uniforms.uTime.value = this.time;
+      material.uniforms.uGrow.value = grow;
+      material.uniforms.uExtinguish.value = extinguish;
     }
 
-    for (const m of this.mats) {
-      m.uniforms.uTime.value = this.time;
-      m.uniforms.uGrow.value = grow;
-      m.uniforms.uContract.value = contract;
-    }
-
-    for (const m of this.flameMats) {
-      m.uniforms.uTime.value = this.time;
-      m.uniforms.uGrow.value = grow;
-      m.uniforms.uContract.value = contract;
-    }
-
-    const flick = 0.86 + 0.14 * Math.sin(this.time * 9.0) * Math.sin(this.time * 3.7);
-    const fade = (1 - contract);
-
-    this.core.material.opacity = 0.40 * grow * fade * flick;
-    this.core.scale.setScalar((0.52 + 0.38 * grow) * (1 - contract * 0.9));
-    this.core.position.y = 0.14 + 0.06 * grow;
-
-    this.groundGlow.material.opacity = 0.27 * grow * fade * flick;
+    // The source cools first, while the fire and embers continue to drift upward.
+    const flicker = 0.86 + 0.14 * Math.sin(this.time * 9.0) * Math.sin(this.time * 3.7);
+    const sourceFade = 1 - smooth01(extinguish / 0.78);
+    const groundFade = 1 - smooth01(extinguish / 0.94);
+    this.core.material.opacity = 0.40 * grow * sourceFade * flicker;
+    this.core.scale.setScalar(0.52 + 0.38 * grow);
+    this.core.position.y = 0.14 + 0.06 * grow + extinguish * 0.04;
+    this.groundGlow.material.opacity = 0.27 * grow * groundFade * flicker;
     this.groundGlow.scale.setScalar(0.85 + 0.55 * grow);
   }
 }

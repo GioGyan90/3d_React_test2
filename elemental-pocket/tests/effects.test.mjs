@@ -137,9 +137,49 @@ test('ice and leaves have a visible range of sizes and leaf orientations', () =>
     fx.dispose();
     return { scales, rotations };
   };
-  const ice = scalesAndRotations('ice', 2.0);
-  const leaves = scalesAndRotations('grass', 1.2);
+  const ice = scalesAndRotations('ice', 1.0);
+  const leaves = scalesAndRotations('grass', 0.6);
   assert.ok(Math.max(...ice.scales) / Math.min(...ice.scales) > 3);
   assert.ok(Math.max(...leaves.scales) / Math.min(...leaves.scales) > 3);
   assert.ok(leaves.rotations.some(q => Math.abs(q.dot(leaves.rotations[0])) < 0.9));
+});
+
+
+test('all effects finish at two seconds by default and keep custom durations', () => {
+  const scene = new THREE.Scene();
+  const fx = new PocketEffects(scene);
+  let completed = 0;
+  const handles = ['fire', 'thunder', 'grass', 'ice'].map(type => fx.play(type, { onComplete: () => completed++ }));
+  fx.update(1.999);
+  assert.ok(handles.every(handle => handle.active));
+  assert.equal(completed, 0);
+  fx.update(0.001);
+  assert.ok(handles.every(handle => !handle.active));
+  assert.equal(completed, 4);
+  const custom = fx.play('fire', { duration: 0.5 });
+  fx.update(0.49);
+  assert.equal(custom.active, true);
+  fx.update(0.01);
+  assert.equal(custom.active, false);
+  fx.dispose();
+});
+
+test('fire rises and fades without contracting its parent during extinction', () => {
+  const scene = new THREE.Scene();
+  const fx = new PocketEffects(scene);
+  const handle = fx.play('fire');
+  const group = scene.children[0];
+  const flame = group.children.find(child => child.name === 'Continuous flame');
+  fx.update(0.1);
+  assert.ok(flame.material.uniforms.uGrow.value > 0 && flame.material.uniforms.uGrow.value < 1);
+  fx.update(0.5);
+  assert.equal(flame.material.uniforms.uGrow.value, 1);
+  fx.update(1.0);
+  assert.equal(handle.active, true);
+  assert.equal(flame.material.uniforms.uGrow.value, 1);
+  assert.ok(flame.material.uniforms.uExtinguish.value > 0 && flame.material.uniforms.uExtinguish.value < 1);
+  assert.deepEqual(group.scale.toArray(), [1, 1, 1]);
+  fx.update(0.4);
+  assert.equal(handle.active, false);
+  fx.dispose();
 });

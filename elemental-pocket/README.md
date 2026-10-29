@@ -2,9 +2,9 @@
 
 [在线预览](https://giogyan90.github.io/3d_React_test2/elemental-pocket/) · [项目源码](https://github.com/GioGyan90/3d_React_test2/tree/main/elemental-pocket)
 
-四种 Three.js 台球进球特效，基于 `effect.htm` 拆分为 TypeScript：
+四种 Three.js 台球进球特效，基于 `effect.htm` 拆分为 TypeScript，默认播放时长均为 2 秒：
 
-- `fire`：连续的双层火焰体环绕球洞，少量火星上升，最后整体收束。
+- `fire`：连续的双层火焰从洞口生起，火势逐渐减弱，余烬上升消散。
 - `thunder`：落雷主干与分支相连，撞击点向外延伸连续电弧；闪电带会朝向传入的相机。
 - `grass`：大小错落的叶片以不同朝向旋舞，再卷入球洞。
 - `ice`：大小不一的多面冰晶沿环生长，再依次碎裂、旋入洞中。
@@ -52,7 +52,7 @@ function onBallPocketed(pocketPosition: THREE.Vector3) {
   pocketFx.play('fire', {
     position: pocketPosition,
     radius: 0.46,
-    duration: 3.2,
+    duration: 2, // 可按游戏需要自定义；省略时默认为 2 秒
     onComplete: () => console.log('动画结束'),
   });
 }

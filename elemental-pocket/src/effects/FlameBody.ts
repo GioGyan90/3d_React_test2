@@ -30,7 +30,7 @@ function makeCurtainGeometry(): THREE.BufferGeometry {
 }
 
 const VERTEX = /* glsl */`
-  uniform float uTime, uGrow, uContract, uRadius, uHeight, uPhase;
+  uniform float uTime, uGrow, uExtinguish, uRadius, uHeight, uPhase;
   varying vec2 vUv;
   varying float vAngle;
 
@@ -41,17 +41,18 @@ const VERTEX = /* glsl */`
     vAngle = a;
     float curl = (sin(a * 3.0 - uTime * 1.4 + h * 4.0 + uPhase) * 0.10
                 + sin(a * 7.0 + uTime * 1.1 + h * 5.0) * 0.035) * h;
-    float angle = a + curl + uContract * 1.8;
+    float angle = a + curl;
     float ripple = sin(a * 5.0 + uTime * 2.0 + h * 6.0 + uPhase) * 0.025 * h;
-    float radius = (uRadius + ripple) * mix(1.0, 0.04, uContract);
-    float y = h * uHeight * uGrow * mix(1.0, 0.15, uContract);
+    float radius = uRadius + ripple;
+    float lift = smoothstep(0.10, 0.92, uExtinguish) * (0.04 + 0.20 * h) * h;
+    float y = h * uHeight + lift;
     vec3 p = vec3(cos(angle) * radius, y, sin(angle) * radius);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
   }
 `;
 
 const FRAGMENT = /* glsl */`
-  uniform float uTime, uGrow, uContract, uOpacity, uPhase;
+  uniform float uTime, uGrow, uExtinguish, uOpacity, uPhase;
   varying vec2 vUv;
   varying float vAngle;
 
@@ -82,12 +83,18 @@ const FRAGMENT = /* glsl */`
     float detail = noise3(flow * 2.1 + vec3(3.1, 6.4, uTime * 0.18));
     float turbulence = large * 0.72 + detail * 0.28;
     // The lower flame stays connected; rising turbulence breaks into soft, uneven tips.
-    float density = 0.80 - h * 1.38 + (turbulence - 0.50) * 1.20;
+    float density = 0.80 - h * 1.38 + (turbulence - 0.50) * 1.20
+      - uExtinguish * (0.24 + detail * 0.16);
     float silhouette = smoothstep(-0.07, 0.16, density);
     float topFade = 1.0 - smoothstep(0.78, 1.0, h);
     float base = smoothstep(0.0, 0.045, h);
     float flicker = 0.86 + 0.14 * sin(uTime * 4.1 + a * 3.0);
-    float opacity = silhouette * topFade * base * flicker * uOpacity * uGrow * (1.0 - uContract);
+    // The ignition front climbs; declining fuel removes irregular patches instead of scaling the ring.
+    float front = 0.12 + uGrow * 0.96;
+    float ignition = (1.0 - smoothstep(front - 0.13, front + 0.08, h)) * smoothstep(0.0, 0.30, uGrow);
+    float localFade = 1.0 - smoothstep(0.02, 0.98, uExtinguish + (1.0 - h) * 0.12 - detail * 0.14);
+    float finalFade = 1.0 - smoothstep(0.60, 1.0, uExtinguish);
+    float opacity = silhouette * topFade * base * flicker * uOpacity * ignition * localFade * finalFade;
     opacity *= 0.72 + 0.28 * turbulence;
     vec3 deep = vec3(0.86, 0.10, 0.012);
     vec3 amber = vec3(1.0, 0.32, 0.025);
@@ -95,6 +102,7 @@ const FRAGMENT = /* glsl */`
     vec3 color = mix(amber, deep, smoothstep(0.16, 0.75, h));
     float hot = (1.0 - smoothstep(0.04, 0.52, h)) * (0.65 + 0.35 * detail);
     color = mix(color, gold, hot * 0.80);
+    color = mix(color, deep * 0.75, uExtinguish * 0.42);
     gl_FragColor = vec4(color, opacity);
   }
 `;
@@ -110,7 +118,7 @@ export function addFlameBody(parent: THREE.Group): THREE.ShaderMaterial[] {
   for (const shell of shells) {
     const material = new THREE.ShaderMaterial({
       uniforms: {
-        uTime: { value: 0 }, uGrow: { value: 0 }, uContract: { value: 0 },
+        uTime: { value: 0 }, uGrow: { value: 0 }, uExtinguish: { value: 0 },
         uRadius: { value: shell.radius }, uHeight: { value: shell.height },
         uOpacity: { value: shell.opacity }, uPhase: { value: shell.phase },
       },

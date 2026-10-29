@@ -23,7 +23,7 @@ export interface PlayOptions {
   position?: THREE.Vector3 | { x: number; y: number; z: number };
   /** Ring radius in the parent's units. Defaults to 0.46. */
   radius?: number;
-  /** Playback time in seconds; defaults to each effect's natural duration. */
+  /** Playback time in seconds; defaults to 2 seconds for every effect. */
   duration?: number;
   /** Rotation about the Y axis in radians. */
   rotation?: number;
@@ -38,6 +38,7 @@ export interface EffectHandle {
 }
 
 type Playback = { effect: BaseEffect; speed: number; onComplete?: () => void };
+const DEFAULT_DURATION = 2;
 const DENSITY: Record<EffectQuality, number> = { low: 0.35, medium: 0.65, high: 1 };
 const FACTORIES: Record<ElementType, (parent: THREE.Object3D, density: number) => BaseEffect> = {
   fire: (parent, density) => new FireEffect(parent, density),
@@ -93,7 +94,7 @@ export class PocketEffects {
     effect.group.rotation.set(0, options.rotation ?? 0, 0);
     effect.group.scale.setScalar(radius / RING_R);
     effect.onCamera(this.camera);
-    const playback: Playback = { effect, speed: effect.duration / (options.duration ?? effect.duration), onComplete: options.onComplete };
+    const playback: Playback = { effect, speed: effect.duration / (options.duration ?? DEFAULT_DURATION), onComplete: options.onComplete };
     this.playing.set(effect, playback);
     effect.play();
     const manager = this;

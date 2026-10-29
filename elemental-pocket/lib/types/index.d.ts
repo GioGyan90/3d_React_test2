@@ -18,7 +18,7 @@ export interface PlayOptions {
     };
     /** Ring radius in the parent's units. Defaults to 0.46. */
     radius?: number;
-    /** Playback time in seconds; defaults to each effect's natural duration. */
+    /** Playback time in seconds; defaults to 2 seconds for every effect. */
     duration?: number;
     /** Rotation about the Y axis in radians. */
     rotation?: number;
