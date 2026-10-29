@@ -1,11 +1,11 @@
 import * as a from "three";
-const b = Math.PI * 2, w = 0.46, x = (f) => Math.max(0, Math.min(1, f)), v = (f) => {
-  const t = x(f);
+const b = Math.PI * 2, w = 0.46, A = (d) => Math.max(0, Math.min(1, d)), g = (d) => {
+  const t = A(d);
   return t * t * (3 - 2 * t);
-}, R = (f) => {
-  const t = x(f);
+}, R = (d) => {
+  const t = A(d);
   return t * t;
-}, c = (f, t) => f + Math.random() * (t - f);
+}, c = (d, t) => d + Math.random() * (t - d);
 class S {
   constructor(t, e) {
     this.group = new a.Group(), this.t = -1, this.time = 0, this.duration = e, this.group.visible = !1, t.add(this.group);
@@ -32,29 +32,29 @@ class S {
   onCamera(t) {
   }
 }
-function P(f, t = 256) {
+function P(d, t = 256) {
   const e = document.createElement("canvas");
   e.width = e.height = t;
   const s = e.getContext("2d");
   if (!s) throw new Error("Canvas 2D is not available");
   const i = s.createRadialGradient(t / 2, t / 2, 0, t / 2, t / 2, t / 2);
-  for (const [r, n] of f) i.addColorStop(r, n);
+  for (const [r, n] of d) i.addColorStop(r, n);
   s.fillStyle = i, s.fillRect(0, 0, t, t);
   const o = new a.CanvasTexture(e);
   return o.colorSpace = a.SRGBColorSpace, o;
 }
-function k(f = 512) {
+function k(d = 512) {
   const t = document.createElement("canvas");
-  t.width = t.height = f;
+  t.width = t.height = d;
   const e = t.getContext("2d");
   if (!e) throw new Error("Canvas 2D is not available");
-  const s = f / 2, i = f / 2, o = e.createRadialGradient(s, i, f * 0.08, s, i, f * 0.5);
-  o.addColorStop(0, "rgba(185,238,255,0.55)"), o.addColorStop(0.5, "rgba(120,200,255,0.20)"), o.addColorStop(1, "rgba(120,200,255,0)"), e.fillStyle = o, e.fillRect(0, 0, f, f), e.globalCompositeOperation = "lighter";
+  const s = d / 2, i = d / 2, o = e.createRadialGradient(s, i, d * 0.08, s, i, d * 0.5);
+  o.addColorStop(0, "rgba(185,238,255,0.55)"), o.addColorStop(0.5, "rgba(120,200,255,0.20)"), o.addColorStop(1, "rgba(120,200,255,0)"), e.fillStyle = o, e.fillRect(0, 0, d, d), e.globalCompositeOperation = "lighter";
   for (let n = 0; n < 110; n++) {
-    const u = Math.random() * b, h = f * 0.1 + Math.random() * f * 0.12, d = h + f * 0.06 + Math.random() * f * 0.2;
+    const u = Math.random() * b, h = d * 0.1 + Math.random() * d * 0.12, f = h + d * 0.06 + Math.random() * d * 0.2;
     e.strokeStyle = `rgba(205,246,255,${c(0.08, 0.3)})`, e.lineWidth = c(0.8, 2.6), e.beginPath(), e.moveTo(s + Math.cos(u) * h, i + Math.sin(u) * h);
     for (let l = 1; l <= 3; l++) {
-      const m = h + (d - h) * (l / 3), p = u + c(-0.09, 0.09);
+      const m = h + (f - h) * (l / 3), p = u + c(-0.09, 0.09);
       e.lineTo(s + Math.cos(p) * m, i + Math.sin(p) * m);
     }
     e.stroke();
@@ -67,8 +67,8 @@ function B() {
   for (let r = 0; r <= 18; r++) {
     const n = r / 18;
     for (let u = 0; u <= 112; u++) {
-      const h = u / 112, d = h * b;
-      if (e.push(Math.cos(d), n, Math.sin(d)), s.push(h, n), r < 18 && u < 112) {
+      const h = u / 112, f = h * b;
+      if (e.push(Math.cos(f), n, Math.sin(f)), s.push(h, n), r < 18 && u < 112) {
         const l = r * 113 + u;
         i.push(l, l + 112 + 1, l + 1), i.push(l + 1, l + 112 + 1, l + 112 + 2);
       }
@@ -106,32 +106,51 @@ const G = (
   varying vec2 vUv;
   varying float vAngle;
 
+  float hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  float noise3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x);
+    float b = mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x);
+    float c = mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x);
+    float d = mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x);
+    return mix(mix(a, b, f.y), mix(c, d, f.y), f.z);
+  }
+
   void main() {
     float a = vAngle;
     float h = vUv.y;
-    // Several slowly shifting harmonics make broad, unequal, connected tongues.
-    float crown = 0.57
-      + 0.18 * sin(a * 3.0 + uTime * 1.25 + uPhase)
-      + 0.12 * sin(a * 7.0 - uTime * 0.85 + 0.8)
-      + 0.06 * sin(a * 11.0 + uTime * 1.7 + 1.3);
-    float silhouette = 1.0 - smoothstep(crown - 0.08, crown + 0.045, h);
-    float flow = sin(a * 6.0 - h * 9.0 + uTime * 2.7 + uPhase)
-               + 0.5 * sin(a * 13.0 + h * 15.0 - uTime * 3.2);
-    float flicker = 0.82 + 0.18 * sin(uTime * 5.1 + a * 5.0);
-    float base = smoothstep(0.0, 0.06, h);
-    float opacity = silhouette * base * flicker * uOpacity * uGrow * (1.0 - uContract);
-    opacity *= 0.80 + 0.20 * smoothstep(-1.1, 1.0, flow);
-    vec3 deep = vec3(0.88, 0.10, 0.015);
-    vec3 amber = vec3(1.0, 0.36, 0.035);
-    vec3 gold = vec3(1.0, 0.74, 0.22);
-    vec3 color = mix(amber, deep, smoothstep(0.18, 0.80, h));
-    float hot = (1.0 - smoothstep(0.08, 0.43, h)) * (0.55 + 0.45 * smoothstep(-0.1, 1.0, flow));
-    color = mix(color, gold, hot * 0.74);
+    // Circular coordinates keep the rolling noise continuous at the seam.
+    vec3 flow = vec3(cos(a) * 2.15, sin(a) * 2.15, h * 2.9 - uTime * 1.10);
+    flow += vec3(2.2 + uPhase, 4.1, uPhase * 0.37);
+    float large = noise3(flow);
+    float detail = noise3(flow * 2.1 + vec3(3.1, 6.4, uTime * 0.18));
+    float turbulence = large * 0.72 + detail * 0.28;
+    // The lower flame stays connected; rising turbulence breaks into soft, uneven tips.
+    float density = 0.80 - h * 1.38 + (turbulence - 0.50) * 1.20;
+    float silhouette = smoothstep(-0.07, 0.16, density);
+    float topFade = 1.0 - smoothstep(0.78, 1.0, h);
+    float base = smoothstep(0.0, 0.045, h);
+    float flicker = 0.86 + 0.14 * sin(uTime * 4.1 + a * 3.0);
+    float opacity = silhouette * topFade * base * flicker * uOpacity * uGrow * (1.0 - uContract);
+    opacity *= 0.72 + 0.28 * turbulence;
+    vec3 deep = vec3(0.86, 0.10, 0.012);
+    vec3 amber = vec3(1.0, 0.32, 0.025);
+    vec3 gold = vec3(1.0, 0.70, 0.16);
+    vec3 color = mix(amber, deep, smoothstep(0.16, 0.75, h));
+    float hot = (1.0 - smoothstep(0.04, 0.52, h)) * (0.65 + 0.35 * detail);
+    color = mix(color, gold, hot * 0.80);
     gl_FragColor = vec4(color, opacity);
   }
 `
 );
-function I(f) {
+function z(d) {
   const t = B(), e = [], s = [
     { radius: w * 1.02, height: 1.08, opacity: 0.64, phase: 0 },
     { radius: w * 0.77, height: 0.9, opacity: 0.57, phase: 2.1 }
@@ -153,11 +172,11 @@ function I(f) {
       depthWrite: !1,
       side: a.DoubleSide
     }), r = new a.Mesh(t, o);
-    r.name = "Continuous flame", r.frustumCulled = !1, f.add(r), e.push(o);
+    r.name = "Continuous flame", r.frustumCulled = !1, d.add(r), e.push(o);
   }
   return e;
 }
-const z = (
+const I = (
   /* glsl */
   `
   attribute float aSeed;
@@ -233,7 +252,7 @@ class V extends S {
       [0.65, "rgba(255,255,255,0.10)"],
       [1, "rgba(255,255,255,0)"]
     ]);
-    this.flameMats = I(this.group), this.lickMat = this.makePointMat(
+    this.flameMats = z(this.group), this.lickMat = this.makePointMat(
       1,
       0.5,
       [1, 0.88, 0.58],
@@ -278,7 +297,7 @@ class V extends S {
         uC2: { value: new a.Vector3(i[0], i[1], i[2]) },
         uC3: { value: new a.Vector3(o[0], o[1], o[2]) }
       },
-      vertexShader: z,
+      vertexShader: I,
       fragmentShader: _,
       transparent: !0,
       depthWrite: !1,
@@ -287,10 +306,10 @@ class V extends S {
     return this.mats.push(r), r;
   }
   makeLayer(t, e, s, i) {
-    const o = new a.BufferGeometry(), r = new Float32Array(t), n = new Float32Array(t), u = new Float32Array(t), h = new Float32Array(t), d = new Float32Array(t);
+    const o = new a.BufferGeometry(), r = new Float32Array(t), n = new Float32Array(t), u = new Float32Array(t), h = new Float32Array(t), f = new Float32Array(t);
     for (let m = 0; m < t; m++)
-      r[m] = Math.random(), n[m] = Math.random() * b, u[m] = Math.random(), h[m] = 0.6 + Math.random() * 0.85, d[m] = c(e, s);
-    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(t * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(d, 1));
+      r[m] = Math.random(), n[m] = Math.random() * b, u[m] = Math.random(), h[m] = 0.6 + Math.random() * 0.85, f[m] = c(e, s);
+    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(t * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(f, 1));
     const l = new a.Points(o, i);
     return l.frustumCulled = !1, this.group.add(l), l;
   }
@@ -300,7 +319,7 @@ class V extends S {
   update() {
     const t = this.t;
     let e, s;
-    t < 0 ? (e = 0.13 + 0.03 * Math.sin(this.time * 1.8), s = 0) : (e = v(t / 0.65), s = v((t - 2.45) / 1.05));
+    t < 0 ? (e = 0.13 + 0.03 * Math.sin(this.time * 1.8), s = 0) : (e = g(t / 0.65), s = g((t - 2.45) / 1.05));
     for (const r of this.mats)
       r.uniforms.uTime.value = this.time, r.uniforms.uGrow.value = e, r.uniforms.uContract.value = s;
     for (const r of this.flameMats)
@@ -309,13 +328,13 @@ class V extends S {
     this.core.material.opacity = 0.4 * e * o * i, this.core.scale.setScalar((0.52 + 0.38 * e) * (1 - s * 0.9)), this.core.position.y = 0.14 + 0.06 * e, this.groundGlow.material.opacity = 0.27 * e * o * i, this.groundGlow.scale.setScalar(0.85 + 0.55 * e);
   }
 }
-function T(f, t, e, s) {
-  let i = [f.clone(), t.clone()], o = f.distanceTo(t) * s;
+function F(d, t, e, s) {
+  let i = [d.clone(), t.clone()], o = d.distanceTo(t) * s;
   for (let r = 0; r < e; r++) {
     const n = [i[0]];
     for (let u = 0; u < i.length - 1; u++) {
-      const h = i[u], d = i[u + 1], l = h.clone().add(d).multiplyScalar(0.5);
-      l.x += c(-0.5, 0.5) * o, l.z += c(-0.5, 0.5) * o, l.y += c(-0.5, 0.5) * o * 0.25, n.push(l, d);
+      const h = i[u], f = i[u + 1], l = h.clone().add(f).multiplyScalar(0.5);
+      l.x += c(-0.5, 0.5) * o, l.z += c(-0.5, 0.5) * o, l.y += c(-0.5, 0.5) * o * 0.25, n.push(l, f);
     }
     i = n, o *= 0.55;
   }
@@ -347,7 +366,7 @@ const O = (
   }
 `
 );
-class A {
+class x {
   constructor(t) {
     this.maxPts = t, this.pos = new Float32Array(t * 2 * 3);
     const e = new Float32Array(t * 2);
@@ -375,8 +394,8 @@ class A {
   setPath(t, e, s) {
     const i = Math.min(t.length, this.maxPts), o = new a.Vector3(), r = new a.Vector3();
     for (let n = 0; n < i; n++) {
-      const u = t[n], h = t[Math.max(0, n - 1)], d = t[Math.min(t.length - 1, n + 1)];
-      o.subVectors(d, h), o.lengthSq() < 1e-9 && o.set(0, 1, 0), o.normalize(), r.crossVectors(o, s), r.lengthSq() < 1e-9 && r.set(1, 0, 0), r.normalize().multiplyScalar(e);
+      const u = t[n], h = t[Math.max(0, n - 1)], f = t[Math.min(t.length - 1, n + 1)];
+      o.subVectors(f, h), o.lengthSq() < 1e-9 && o.set(0, 1, 0), o.normalize(), r.crossVectors(o, s), r.lengthSq() < 1e-9 && r.set(1, 0, 0), r.normalize().multiplyScalar(e);
       const l = n * 6;
       this.pos[l] = u.x + r.x, this.pos[l + 1] = u.y + r.y, this.pos[l + 2] = u.z + r.z, this.pos[l + 3] = u.x - r.x, this.pos[l + 4] = u.y - r.y, this.pos[l + 5] = u.z - r.z;
     }
@@ -392,15 +411,15 @@ class D extends S {
       [0.62, "rgba(150,190,255,0.12)"],
       [1, "rgba(150,190,255,0)"]
     ]);
-    this.mainBolt = new A(64), this.mainBolt.mesh.name = "Lightning trunk", this.mainGlow = new A(64), this.mainGlow.material.uniforms.uColor.value.set(0.3, 0.48, 1), this.branchA = new A(32), this.branchB = new A(32), this.group.add(this.mainGlow.mesh, this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh), this.arcs = [];
+    this.mainBolt = new x(64), this.mainBolt.mesh.name = "Lightning trunk", this.mainGlow = new x(64), this.mainGlow.material.uniforms.uColor.value.set(0.3, 0.48, 1), this.branchA = new x(32), this.branchB = new x(32), this.group.add(this.mainGlow.mesh, this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh), this.arcs = [];
     for (let l = 0; l < 3; l++) {
-      const m = new A(32);
+      const m = new x(32);
       m.mesh.name = "Connected ground arc", m.material.uniforms.uColor.value.set(0.45, 0.68, 1), this.group.add(m.mesh), this.arcs.push(m);
     }
-    const i = Math.round(180 * e), o = new a.BufferGeometry(), r = new Float32Array(i), n = new Float32Array(i), u = new Float32Array(i), h = new Float32Array(i), d = new Float32Array(i);
+    const i = Math.round(180 * e), o = new a.BufferGeometry(), r = new Float32Array(i), n = new Float32Array(i), u = new Float32Array(i), h = new Float32Array(i), f = new Float32Array(i);
     for (let l = 0; l < i; l++)
-      r[l] = Math.random(), n[l] = Math.random() * b, u[l] = Math.random(), h[l] = Math.random(), d[l] = c(2, 7);
-    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(i * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(d, 1)), this.sparkMat = new a.ShaderMaterial({
+      r[l] = Math.random(), n[l] = Math.random() * b, u[l] = Math.random(), h[l] = Math.random(), f[l] = c(2, 7);
+    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(i * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(f, 1)), this.sparkMat = new a.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uGrow: { value: 0 },
@@ -535,11 +554,11 @@ class D extends S {
     this.group.updateWorldMatrix(!0, !1), this.group.worldToLocal(e), e.lengthSq() > 1e-4 && this.viewDir.copy(e).normalize();
   }
   strike() {
-    const t = new a.Vector3(c(-0.8, 0.8), c(1.9, 2.5), c(-0.85, 0.75)), e = new a.Vector3(c(-0.1, 0.1), 0.02, c(-0.1, 0.1)), s = T(t, e, 5, 0.2);
+    const t = new a.Vector3(c(-0.8, 0.8), c(1.9, 2.5), c(-0.85, 0.75)), e = new a.Vector3(c(-0.1, 0.1), 0.02, c(-0.1, 0.1)), s = F(t, e, 5, 0.2);
     this.lastImpact.copy(e), this.arcTimer = 0, this.mainBolt.setPath(s, 0.041, this.viewDir), this.mainGlow.setPath(s, 0.105, this.viewDir);
     const i = (o) => {
       const r = Math.floor(c(s.length * 0.15, s.length * 0.6)), n = s[r].clone(), u = new a.Vector3(c(-1, 1), c(-0.75, 0.25), c(-1, 1)).normalize(), h = n.clone().addScaledVector(u, c(0.45, 1.05));
-      o.setPath(T(n, h, 4, 0.28), 0.026, this.viewDir);
+      o.setPath(F(n, h, 4, 0.28), 0.026, this.viewDir);
     };
     i(this.branchA), i(this.branchB), this.boltAge = 0, this.flashPeak = 1, this.flash.position.copy(t), this.flash.scale.setScalar(c(1.3, 2.3));
   }
@@ -549,32 +568,32 @@ class D extends S {
     n.y += c(0.05, 0.16), n.x += c(-0.05, 0.05), n.z += c(-0.05, 0.05);
     const u = [this.lastImpact.clone(), n, r];
     for (let h = 1; h <= 13; h++) {
-      const d = s + i * (h / 13), l = o * c(0.92, 1.08);
-      u.push(new a.Vector3(Math.cos(d) * l, c(0.02, 0.14), Math.sin(d) * l));
+      const f = s + i * (h / 13), l = o * c(0.92, 1.08);
+      u.push(new a.Vector3(Math.cos(f) * l, c(0.02, 0.14), Math.sin(f) * l));
     }
     t.setPath(u, c(0.026, 0.037), this.viewDir);
   }
   update(t) {
     const e = this.t;
     let s, i;
-    e < 0 ? (s = 0.34 + 0.05 * Math.sin(this.time * 2.4), i = 0) : (s = v(e / 0.45), i = v((e - 2.45) / 0.95)), e >= 0 && e < 2.5 && (this.strikeTimer -= t, this.strikeTimer <= 0 && (this.strike(), this.strikeTimer = c(0.52, 0.8))), this.boltAge += t;
-    const o = 1 - v(this.boltAge / 0.3), r = 0.78 + 0.22 * Math.sin(this.time * 32), n = o * r * (1 - i) * (e >= 0 ? 1 : 0);
+    e < 0 ? (s = 0.34 + 0.05 * Math.sin(this.time * 2.4), i = 0) : (s = g(e / 0.45), i = g((e - 2.45) / 0.95)), e >= 0 && e < 2.5 && (this.strikeTimer -= t, this.strikeTimer <= 0 && (this.strike(), this.strikeTimer = c(0.52, 0.8))), this.boltAge += t;
+    const o = 1 - g(this.boltAge / 0.3), r = 0.78 + 0.22 * Math.sin(this.time * 32), n = o * r * (1 - i) * (e >= 0 ? 1 : 0);
     for (const u of [this.mainBolt, this.branchA, this.branchB])
       u.material.uniforms.uAlpha.value = n;
     this.mainGlow.material.uniforms.uAlpha.value = n * 0.28, this.arcTimer -= t, this.arcTimer <= 0 && (this.arcTimer = c(0.2, 0.3), this.arcs.forEach((u, h) => this.buildArc(u, h))), this.arcs.forEach((u, h) => {
-      const d = 0.72 + 0.28 * Math.sin(this.time * 17 + h * 2.1);
-      u.material.uniforms.uAlpha.value = s * (1 - i) * d, u.mesh.scale.setScalar(1 - i * 0.88);
+      const f = 0.72 + 0.28 * Math.sin(this.time * 17 + h * 2.1);
+      u.material.uniforms.uAlpha.value = s * (1 - i) * f, u.mesh.scale.setScalar(1 - i * 0.88);
     }), this.flashPeak = Math.max(0, this.flashPeak - t * 5.5), this.flash.material.opacity = this.flashPeak * 0.65, this.groundFlash.material.opacity = this.flashPeak * 0.34, this.groundFlash.scale.setScalar(0.8 + this.flashPeak * 0.6), this.sparkMat.uniforms.uTime.value = this.time, this.sparkMat.uniforms.uGrow.value = s, this.sparkMat.uniforms.uContract.value = i, this.ringMat.uniforms.uTime.value = this.time, this.ringMat.uniforms.uGrow.value = s, this.ringMat.uniforms.uContract.value = i, this.ring.scale.setScalar(1 - i * 0.35);
   }
 }
 function H() {
   const s = [], i = [], o = [], r = new a.Color(2914877), n = new a.Color(6473066), u = new a.Color(11135645);
-  for (let d = 0; d <= 14; d++) {
-    const l = d / 14, m = Math.sin(Math.PI * Math.pow(l, 0.68)) * 0.085 * (1 - 0.22 * l) + 12e-4, p = Math.sin(Math.PI * l) * 0.022, y = l * 0.28, g = r.clone().lerp(n, l).lerp(u, l * l).multiplyScalar(0.7), M = r.clone().lerp(n, l).lerp(u, l * l);
-    s.push(-m, y, p), i.push(g.r, g.g, g.b), s.push(0, y, p + 8e-3), i.push(M.r, M.g, M.b), s.push(m, y, p), i.push(g.r, g.g, g.b);
+  for (let f = 0; f <= 14; f++) {
+    const l = f / 14, m = Math.sin(Math.PI * Math.pow(l, 0.68)) * 0.085 * (1 - 0.22 * l) + 12e-4, p = Math.sin(Math.PI * l) * 0.022, y = l * 0.28, v = r.clone().lerp(n, l).lerp(u, l * l).multiplyScalar(0.7), M = r.clone().lerp(n, l).lerp(u, l * l);
+    s.push(-m, y, p), i.push(v.r, v.g, v.b), s.push(0, y, p + 8e-3), i.push(M.r, M.g, M.b), s.push(m, y, p), i.push(v.r, v.g, v.b);
   }
-  for (let d = 0; d < 14; d++) {
-    const l = d * 3, m = l + 3;
+  for (let f = 0; f < 14; f++) {
+    const l = f * 3, m = l + 3;
     o.push(l, m, l + 1, l + 1, m, m + 1), o.push(l + 1, m + 1, l + 2, l + 2, m + 1, m + 2);
   }
   const h = new a.BufferGeometry();
@@ -632,26 +651,26 @@ class W extends S {
     let i;
     t < 0 ? i = 0.62 : i = 1;
     for (let r = 0; r < this.count; r++) {
-      const n = this.leaves[r], u = r / this.count, h = t < 0 ? 0.62 : v((t - u * 0.3) / 0.45);
-      let d = 0;
-      t >= e && (d = x((t - e - u * 0.5 * s) / (0.5 * s)));
-      const l = R(d), m = n.r * (1 - l * 0.995), p = n.ang + this.time * n.spinSpd * n.dir * (1 + l * 4), y = Math.cos(p) * m, g = Math.sin(p) * m, M = Math.sin(this.time * n.bobF + n.bobP) * 0.055, F = (n.y + M) * (1 - l) + -0.14 * l, C = n.size * h * (1 - l * l) * i;
-      this.dummy.position.set(y, F, g), this.dummy.rotation.set(
+      const n = this.leaves[r], u = r / this.count, h = t < 0 ? 0.62 : g((t - u * 0.3) / 0.45);
+      let f = 0;
+      t >= e && (f = A((t - e - u * 0.5 * s) / (0.5 * s)));
+      const l = R(f), m = n.r * (1 - l * 0.995), p = n.ang + this.time * n.spinSpd * n.dir * (1 + l * 4), y = Math.cos(p) * m, v = Math.sin(p) * m, M = Math.sin(this.time * n.bobF + n.bobP) * 0.055, T = (n.y + M) * (1 - l) + -0.14 * l, C = n.size * h * (1 - l * l) * i;
+      this.dummy.position.set(y, T, v), this.dummy.rotation.set(
         n.tilt + Math.sin(this.time * n.flapF + n.flapP) * 0.55 + l * 2.2,
         p + n.heading + this.time * n.spin * (1 + l * 2),
         n.roll + Math.sin(this.time * n.flapF * 0.7 + n.flapP) * 0.4
       ), this.dummy.scale.set(C * n.width, C * n.length, C), this.dummy.updateMatrix(), this.mesh.setMatrixAt(r, this.dummy.matrix);
     }
     this.mesh.instanceMatrix.needsUpdate = !0;
-    const o = t < 0 ? 0.18 : v(t / 0.7) * (1 - v((t - e) / s));
+    const o = t < 0 ? 0.18 : g(t / 0.7) * (1 - g((t - e) / s));
     this.groundGlow.material.opacity = 0.3 * o;
   }
 }
-function N(f, t, e, s) {
+function N(d, t, e, s) {
   const i = [], o = [], r = [];
   for (let u = 0; u <= e; u++) {
-    const h = u / e, d = -1 * h * b + Math.PI * 0.5, l = Math.cos(d), m = Math.sin(d);
-    i.push(l * f, 0, m * f, l * t, 0, m * t), o.push(h, 0, h, 1);
+    const h = u / e, f = -1 * h * b + Math.PI * 0.5, l = Math.cos(f), m = Math.sin(f);
+    i.push(l * d, 0, m * d, l * t, 0, m * t), o.push(h, 0, h, 1);
   }
   for (let u = 0; u < e; u++) {
     const h = u * 2;
@@ -668,7 +687,7 @@ class j extends S {
     const i = [], o = s.getAttribute("position");
     for (let p = 0; p < o.count; p += 3) {
       const y = 0.67 + p / 3 % 4 * 0.1;
-      for (let g = 0; g < 3; g++) i.push(y * 0.8, y * 0.93, y);
+      for (let v = 0; v < 3; v++) i.push(y * 0.8, y * 0.93, y);
     }
     s.setAttribute("color", new a.Float32BufferAttribute(i, 3));
     const r = new a.MeshBasicMaterial({
@@ -680,14 +699,14 @@ class j extends S {
     this.shards = new a.InstancedMesh(s, r, this.count), this.shards.frustumCulled = !1, this.group.add(this.shards), this.shardParams = [];
     const n = [12446463, 10475775, 14874879, 8833518];
     for (let p = 0; p < this.count; p++) {
-      const g = p % 11 === 1 || p % 17 === 4 ? c(2.1, 2.7) : p % 4 === 0 ? c(1, 1.5) : c(0.32, 0.72);
+      const v = p % 11 === 1 || p % 17 === 4 ? c(2.1, 2.7) : p % 4 === 0 ? c(1, 1.5) : c(0.32, 0.72);
       this.shardParams.push({
         rj: c(-0.08, 0.08),
         angleJitter: c(-0.32, 0.32) * b / this.count,
         y: c(0.01, 0.07),
-        sx: g * c(0.82, 1.28),
-        sy: g * c(0.7, 1.18),
-        sz: g * c(0.82, 1.28),
+        sx: v * c(0.82, 1.28),
+        sy: v * c(0.7, 1.18),
+        sz: v * c(0.82, 1.28),
         rx: c(-0.5, 0.5),
         ry: c(-Math.PI, Math.PI),
         rz: c(-0.5, 0.5),
@@ -756,10 +775,10 @@ class j extends S {
         opacity: 0
       })
     ), this.frost.rotation.x = -Math.PI / 2, this.frost.position.y = 3e-3, this.group.add(this.frost);
-    const u = Math.round(350 * e), h = new a.BufferGeometry(), d = new Float32Array(u), l = new Float32Array(u), m = new Float32Array(u * 3);
+    const u = Math.round(350 * e), h = new a.BufferGeometry(), f = new Float32Array(u), l = new Float32Array(u), m = new Float32Array(u * 3);
     for (let p = 0; p < u; p++)
-      d[p] = Math.floor(Math.random() * this.count) / this.count, l[p] = Math.random(), m[p * 3] = c(-0.09, 0.09), m[p * 3 + 1] = c(0, 0.22), m[p * 3 + 2] = c(-0.09, 0.09);
-    h.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(u * 3), 3)), h.setAttribute("aShard", new a.Float32BufferAttribute(d, 1)), h.setAttribute("aSeed", new a.Float32BufferAttribute(l, 1)), h.setAttribute("aOff", new a.Float32BufferAttribute(m, 3)), this.dustMat = new a.ShaderMaterial({
+      f[p] = Math.floor(Math.random() * this.count) / this.count, l[p] = Math.random(), m[p * 3] = c(-0.09, 0.09), m[p * 3 + 1] = c(0, 0.22), m[p * 3 + 2] = c(-0.09, 0.09);
+    h.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(u * 3), 3)), h.setAttribute("aShard", new a.Float32BufferAttribute(f, 1)), h.setAttribute("aSeed", new a.Float32BufferAttribute(l, 1)), h.setAttribute("aOff", new a.Float32BufferAttribute(m, 3)), this.dustMat = new a.ShaderMaterial({
       uniforms: {
         uCrack: { value: 0 },
         uRadius: { value: w },
@@ -829,29 +848,29 @@ class j extends S {
   update() {
     const t = this.t;
     let e, s;
-    t < 0 ? (e = 0.22 + 0.04 * Math.sin(this.time * 1.6), s = 0) : (e = v(t / this.freezeDur), s = v((t - this.holdEnd) / 1.25) * 1.14);
+    t < 0 ? (e = 0.22 + 0.04 * Math.sin(this.time * 1.6), s = 0) : (e = g(t / this.freezeDur), s = g((t - this.holdEnd) / 1.25) * 1.14);
     for (let o = 0; o < this.count; o++) {
-      const r = o / this.count, n = this.shardParams[o], u = Math.PI * 0.5 - r * b + n.angleJitter, h = x((e - r) / 0.045), d = v((s - r) / 0.12), l = 1 + 0.42 * Math.sin(x((e - r) / 0.14) * Math.PI), m = 0.88 + 0.12 * Math.sin(this.time * 3.1 + o), p = h * (1 - d) * l * m;
+      const r = o / this.count, n = this.shardParams[o], u = Math.PI * 0.5 - r * b + n.angleJitter, h = A((e - r) / 0.045), f = g((s - r) / 0.12), l = 1 + 0.42 * Math.sin(A((e - r) / 0.14) * Math.PI), m = 0.88 + 0.12 * Math.sin(this.time * 3.1 + o), p = h * (1 - f) * l * m;
       this.dummy.position.set(
-        Math.cos(u) * (w + n.rj) * (1 - d * 0.8),
-        (0.02 + n.y * h) * (1 - d) - d * 0.12,
-        Math.sin(u) * (w + n.rj) * (1 - d * 0.8)
+        Math.cos(u) * (w + n.rj) * (1 - f * 0.8),
+        (0.02 + n.y * h) * (1 - f) - f * 0.12,
+        Math.sin(u) * (w + n.rj) * (1 - f * 0.8)
       ), this.dummy.rotation.set(
-        n.rx + d * n.spin * 1.4,
-        -u + n.ry + d * n.spin * 2,
-        n.rz + d * n.spin
+        n.rx + f * n.spin * 1.4,
+        -u + n.ry + f * n.spin * 2,
+        n.rz + f * n.spin
       ), this.dummy.scale.set(n.sx * p, n.sy * p, n.sz * p), this.dummy.updateMatrix(), this.shards.setMatrixAt(o, this.dummy.matrix);
     }
-    this.shards.instanceMatrix.needsUpdate = !0, this.sweepMat.uniforms.uFront.value = e, this.sweepMat.uniforms.uCrack.value = s, this.sweepMat.uniforms.uTime.value = this.time, this.sweepMat.uniforms.uOpacity.value = 1 - v(s * 1.15);
-    const i = t < 0 ? 0.1 : v(e) * (1 - v(s));
+    this.shards.instanceMatrix.needsUpdate = !0, this.sweepMat.uniforms.uFront.value = e, this.sweepMat.uniforms.uCrack.value = s, this.sweepMat.uniforms.uTime.value = this.time, this.sweepMat.uniforms.uOpacity.value = 1 - g(s * 1.15);
+    const i = t < 0 ? 0.1 : g(e) * (1 - g(s));
     this.frost.material.opacity = 0.55 * i, this.frost.scale.setScalar(0.9 + 0.25 * e), this.dustMat.uniforms.uCrack.value = s, this.dustMat.uniforms.uTime.value = this.time;
   }
 }
 const L = { low: 0.35, medium: 0.65, high: 1 }, q = {
-  fire: (f, t) => new V(f, t),
-  thunder: (f, t) => new D(f, t),
-  grass: (f, t) => new W(f, t),
-  ice: (f, t) => new j(f, t)
+  fire: (d, t) => new V(d, t),
+  thunder: (d, t) => new D(d, t),
+  grass: (d, t) => new W(d, t),
+  ice: (d, t) => new j(d, t)
 };
 class X {
   constructor(t, e = {}) {
@@ -871,7 +890,7 @@ class X {
       throw new Error("position must contain finite x, y and z values");
     let o = this.pools.get(t);
     o || (o = [], this.pools.set(t, o));
-    let r = o.find((d) => !this.playing.has(d));
+    let r = o.find((f) => !this.playing.has(f));
     r || (r = s(this.parent, this.density), r.onResize(this.pixelRatio), o.push(r));
     const n = e.position ?? { x: 0, y: 0, z: 0 };
     r.group.position.set(n.x, n.y, n.z), r.group.rotation.set(0, e.rotation ?? 0, 0), r.group.scale.setScalar(i / w), r.onCamera(this.camera);
@@ -915,9 +934,9 @@ class X {
           const u = Array.isArray(n.material) ? n.material : [n.material];
           for (const h of u) {
             e.add(h);
-            for (const d of Object.values(h)) d instanceof a.Texture && s.add(d);
+            for (const f of Object.values(h)) f instanceof a.Texture && s.add(f);
             if (h instanceof a.ShaderMaterial)
-              for (const d of Object.values(h.uniforms)) d.value instanceof a.Texture && s.add(d.value);
+              for (const f of Object.values(h.uniforms)) f.value instanceof a.Texture && s.add(f.value);
           }
         }
       }), o.group.removeFromParent();

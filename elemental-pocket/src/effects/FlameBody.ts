@@ -55,27 +55,46 @@ const FRAGMENT = /* glsl */`
   varying vec2 vUv;
   varying float vAngle;
 
+  float hash31(vec3 p) {
+    p = fract(p * 0.1031);
+    p += dot(p, p.yzx + 33.33);
+    return fract((p.x + p.y) * p.z);
+  }
+
+  float noise3(vec3 p) {
+    vec3 i = floor(p);
+    vec3 f = fract(p);
+    f = f * f * (3.0 - 2.0 * f);
+    float a = mix(hash31(i), hash31(i + vec3(1.0, 0.0, 0.0)), f.x);
+    float b = mix(hash31(i + vec3(0.0, 1.0, 0.0)), hash31(i + vec3(1.0, 1.0, 0.0)), f.x);
+    float c = mix(hash31(i + vec3(0.0, 0.0, 1.0)), hash31(i + vec3(1.0, 0.0, 1.0)), f.x);
+    float d = mix(hash31(i + vec3(0.0, 1.0, 1.0)), hash31(i + vec3(1.0, 1.0, 1.0)), f.x);
+    return mix(mix(a, b, f.y), mix(c, d, f.y), f.z);
+  }
+
   void main() {
     float a = vAngle;
     float h = vUv.y;
-    // Several slowly shifting harmonics make broad, unequal, connected tongues.
-    float crown = 0.57
-      + 0.18 * sin(a * 3.0 + uTime * 1.25 + uPhase)
-      + 0.12 * sin(a * 7.0 - uTime * 0.85 + 0.8)
-      + 0.06 * sin(a * 11.0 + uTime * 1.7 + 1.3);
-    float silhouette = 1.0 - smoothstep(crown - 0.08, crown + 0.045, h);
-    float flow = sin(a * 6.0 - h * 9.0 + uTime * 2.7 + uPhase)
-               + 0.5 * sin(a * 13.0 + h * 15.0 - uTime * 3.2);
-    float flicker = 0.82 + 0.18 * sin(uTime * 5.1 + a * 5.0);
-    float base = smoothstep(0.0, 0.06, h);
-    float opacity = silhouette * base * flicker * uOpacity * uGrow * (1.0 - uContract);
-    opacity *= 0.80 + 0.20 * smoothstep(-1.1, 1.0, flow);
-    vec3 deep = vec3(0.88, 0.10, 0.015);
-    vec3 amber = vec3(1.0, 0.36, 0.035);
-    vec3 gold = vec3(1.0, 0.74, 0.22);
-    vec3 color = mix(amber, deep, smoothstep(0.18, 0.80, h));
-    float hot = (1.0 - smoothstep(0.08, 0.43, h)) * (0.55 + 0.45 * smoothstep(-0.1, 1.0, flow));
-    color = mix(color, gold, hot * 0.74);
+    // Circular coordinates keep the rolling noise continuous at the seam.
+    vec3 flow = vec3(cos(a) * 2.15, sin(a) * 2.15, h * 2.9 - uTime * 1.10);
+    flow += vec3(2.2 + uPhase, 4.1, uPhase * 0.37);
+    float large = noise3(flow);
+    float detail = noise3(flow * 2.1 + vec3(3.1, 6.4, uTime * 0.18));
+    float turbulence = large * 0.72 + detail * 0.28;
+    // The lower flame stays connected; rising turbulence breaks into soft, uneven tips.
+    float density = 0.80 - h * 1.38 + (turbulence - 0.50) * 1.20;
+    float silhouette = smoothstep(-0.07, 0.16, density);
+    float topFade = 1.0 - smoothstep(0.78, 1.0, h);
+    float base = smoothstep(0.0, 0.045, h);
+    float flicker = 0.86 + 0.14 * sin(uTime * 4.1 + a * 3.0);
+    float opacity = silhouette * topFade * base * flicker * uOpacity * uGrow * (1.0 - uContract);
+    opacity *= 0.72 + 0.28 * turbulence;
+    vec3 deep = vec3(0.86, 0.10, 0.012);
+    vec3 amber = vec3(1.0, 0.32, 0.025);
+    vec3 gold = vec3(1.0, 0.70, 0.16);
+    vec3 color = mix(amber, deep, smoothstep(0.16, 0.75, h));
+    float hot = (1.0 - smoothstep(0.04, 0.52, h)) * (0.65 + 0.35 * detail);
+    color = mix(color, gold, hot * 0.80);
     gl_FragColor = vec4(color, opacity);
   }
 `;
