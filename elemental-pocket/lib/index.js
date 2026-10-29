@@ -140,13 +140,13 @@ class E extends S {
     ]);
     this.lickMat = this.makePointMat(
       1,
-      1,
+      0.5,
       [1, 0.88, 0.58],
       [1, 0.42, 0.08],
       [0.8, 0.1, 0.02]
     ), this.licks = this.makeLayer(Math.round(950 * e), 7, 20, this.lickMat), this.glowMat = this.makePointMat(
       1.95,
-      0.24,
+      0.12,
       [1, 0.72, 0.36],
       [1, 0.34, 0.05],
       [0.62, 0.05, 0.01]
@@ -209,7 +209,7 @@ class E extends S {
     for (const o of this.mats)
       o.uniforms.uTime.value = this.time, o.uniforms.uGrow.value = e, o.uniforms.uContract.value = r;
     const i = 0.86 + 0.14 * Math.sin(this.time * 9) * Math.sin(this.time * 3.7), s = 1 - r;
-    this.core.material.opacity = 0.62 * e * s * i, this.core.scale.setScalar((0.52 + 0.38 * e) * (1 - r * 0.9)), this.core.position.y = 0.14 + 0.06 * e, this.groundGlow.material.opacity = 0.4 * e * s * i, this.groundGlow.scale.setScalar(0.85 + 0.55 * e);
+    this.core.material.opacity = 0.4 * e * s * i, this.core.scale.setScalar((0.52 + 0.38 * e) * (1 - r * 0.9)), this.core.position.y = 0.14 + 0.06 * e, this.groundGlow.material.opacity = 0.27 * e * s * i, this.groundGlow.scale.setScalar(0.85 + 0.55 * e);
   }
 }
 function P(d, t, e, r) {

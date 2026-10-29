@@ -20,7 +20,7 @@ const required = <T extends Element>(selector: string): T => {
 
 function buildStage(scene: THREE.Scene): void {
   // A simple pocket is shown only in the demo. The reusable effect contains no table.
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(12, 12), new THREE.MeshBasicMaterial({ color: 0x101b23 }));
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshBasicMaterial({ color: 0x101b23 }));
   floor.rotation.x = -Math.PI / 2;
   floor.position.y = -0.018;
   scene.add(floor);

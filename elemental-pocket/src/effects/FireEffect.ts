@@ -86,12 +86,12 @@ export class FireEffect extends BaseEffect {
     ]);
 
     // ---- 粒子层 A：细碎火舌 ----
-    this.lickMat = this.makePointMat(1.0, 1.0,
+    this.lickMat = this.makePointMat(1.0, 0.5,
       [1.00, 0.88, 0.58], [1.00, 0.42, 0.08], [0.80, 0.10, 0.02]);
     this.licks = this.makeLayer(Math.round(950 * quality), 7, 20, this.lickMat);
 
     // ---- 粒子层 B：柔和体积辉光 ----
-    this.glowMat = this.makePointMat(1.95, 0.24,
+    this.glowMat = this.makePointMat(1.95, 0.12,
       [1.00, 0.72, 0.36], [1.00, 0.34, 0.05], [0.62, 0.05, 0.01]);
     this.glow = this.makeLayer(Math.round(240 * quality), 16, 40, this.glowMat);
 
@@ -197,11 +197,11 @@ export class FireEffect extends BaseEffect {
     const flick = 0.86 + 0.14 * Math.sin(this.time * 9.0) * Math.sin(this.time * 3.7);
     const fade = (1 - contract);
 
-    this.core.material.opacity = 0.62 * grow * fade * flick;
+    this.core.material.opacity = 0.40 * grow * fade * flick;
     this.core.scale.setScalar((0.52 + 0.38 * grow) * (1 - contract * 0.9));
     this.core.position.y = 0.14 + 0.06 * grow;
 
-    this.groundGlow.material.opacity = 0.40 * grow * fade * flick;
+    this.groundGlow.material.opacity = 0.27 * grow * fade * flick;
     this.groundGlow.scale.setScalar(0.85 + 0.55 * grow);
   }
 }
