@@ -13,6 +13,8 @@ declare class Ribbon {
 export declare class ThunderEffect extends BaseEffect {
     private viewDir;
     private mainBolt;
+    private mainGlow;
+    private lastImpact;
     private branchA;
     private branchB;
     private arcs;
@@ -31,7 +33,8 @@ export declare class ThunderEffect extends BaseEffect {
     onResize(pr: number): void;
     onCamera(camera: THREE.Camera | undefined): void;
     strike(): void;
-    buildArc(ribbon: Ribbon): void;
+    /** Every arc starts at the strike point and runs outward into a jagged ring. */
+    buildArc(ribbon: Ribbon, index: number): void;
     update(dt: number): void;
 }
 export {};

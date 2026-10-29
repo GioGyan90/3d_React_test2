@@ -46,7 +46,7 @@ function makeLeafGeometry() {
   return g;
 }
 
-type Leaf = { ang: number; r: number; y: number; size: number; dir: number; spinSpd: number; bobF: number; bobP: number; flapF: number; flapP: number; tilt: number; spin: number };
+type Leaf = { ang: number; r: number; y: number; size: number; width: number; length: number; dir: number; spinSpd: number; bobF: number; bobP: number; flapF: number; flapP: number; tilt: number; heading: number; roll: number; spin: number };
 export class GrassEffect extends BaseEffect {
   private count: number;
   private dummy: THREE.Object3D;
@@ -73,19 +73,26 @@ export class GrassEffect extends BaseEffect {
     const palette = [0x9fe08a, 0x6fd07a, 0xc8f08a, 0x54b56a, 0xa8d96a];
 
     for (let i = 0; i < this.count; i++) {
+      // A few hero leaves, supporting medium leaves, and many small ones.
+      const size = i % 11 === 1 || i % 17 === 4 ? rand(1.65, 2.10)
+        : i % 4 === 0 ? rand(0.95, 1.30) : rand(0.36, 0.72);
       this.leaves.push({
-        ang: (i / this.count) * TAU + rand(-0.22, 0.22),
-        r: RING_R * rand(0.80, 1.38),
-        y: rand(0.10, 0.78),
-        size: rand(0.72, 1.55),
-        dir: Math.random() < 0.5 ? -1 : 1,
+        ang: Math.random() * TAU,
+        r: RING_R * rand(0.65, 1.55),
+        y: rand(0.06, 0.82),
+        size,
+        width: rand(0.78, 1.28),
+        length: rand(0.80, 1.22),
+        dir: Math.random() < 0.25 ? -1 : 1,
         spinSpd: rand(0.35, 0.95),
         bobF: rand(1.4, 2.8),
         bobP: Math.random() * TAU,
         flapF: rand(2.0, 4.2),
         flapP: Math.random() * TAU,
-        tilt: rand(-0.5, 0.5),
-        spin: rand(-1.2, 1.2)
+        tilt: rand(-1.4, 1.4),
+        heading: rand(-Math.PI, Math.PI),
+        roll: rand(-Math.PI, Math.PI),
+        spin: rand(-0.9, 0.9)
       });
       this.mesh.setColorAt(i, new THREE.Color(palette[i % palette.length]).multiplyScalar(rand(0.85, 1.12)));
     }
@@ -147,10 +154,10 @@ export class GrassEffect extends BaseEffect {
       this.dummy.position.set(x, y, z);
       this.dummy.rotation.set(
         L.tilt + Math.sin(this.time * L.flapF + L.flapP) * 0.55 + e * 2.2,
-        ang + Math.PI * 0.5 + this.time * L.spin * (1 + e * 2),
-        Math.sin(this.time * L.flapF * 0.7 + L.flapP) * 0.65
+        ang + L.heading + this.time * L.spin * (1 + e * 2),
+        L.roll + Math.sin(this.time * L.flapF * 0.7 + L.flapP) * 0.40
       );
-      this.dummy.scale.setScalar(scale);
+      this.dummy.scale.set(scale * L.width, scale * L.length, scale);
       this.dummy.updateMatrix();
       this.mesh.setMatrixAt(i, this.dummy.matrix);
     }

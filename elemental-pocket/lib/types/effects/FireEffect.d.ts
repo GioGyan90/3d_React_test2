@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { BaseEffect } from '../core/BaseEffect';
 export declare class FireEffect extends BaseEffect {
     private mats;
+    private flameMats;
     private lickMat;
     private licks;
     private glowMat;

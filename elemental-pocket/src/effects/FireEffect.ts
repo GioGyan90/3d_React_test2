@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import { BaseEffect } from '../core/BaseEffect';
 import { TAU, RING_R, rand, clamp01, smooth01, easeIn } from '../core/math';
-import { radialTexture, frostTexture } from '../core/textures';
+import { radialTexture } from '../core/textures';
+import { addFlameBody } from './FlameBody';
 
 const FIRE_VERT = /* glsl */`
   attribute float aSeed;
@@ -69,6 +70,7 @@ const POINT_FRAG_BASIC = /* glsl */`
 
 export class FireEffect extends BaseEffect {
   private mats: THREE.ShaderMaterial[] = [];
+  private flameMats: THREE.ShaderMaterial[];
   private lickMat: THREE.ShaderMaterial;
   private licks: THREE.Points;
   private glowMat: THREE.ShaderMaterial;
@@ -85,15 +87,18 @@ export class FireEffect extends BaseEffect {
       [1.0, 'rgba(255,255,255,0)']
     ]);
 
-    // ---- 粒子层 A：细碎火舌 ----
+    // 连续火焰体是主体，少量上升火星只是辅助。
+    this.flameMats = addFlameBody(this.group);
+
+    // ---- 稀疏火星 ----
     this.lickMat = this.makePointMat(1.0, 0.5,
       [1.00, 0.88, 0.58], [1.00, 0.42, 0.08], [0.80, 0.10, 0.02]);
-    this.licks = this.makeLayer(Math.round(950 * quality), 7, 20, this.lickMat);
+    this.licks = this.makeLayer(Math.round(240 * quality), 3, 10, this.lickMat);
 
     // ---- 粒子层 B：柔和体积辉光 ----
     this.glowMat = this.makePointMat(1.95, 0.12,
       [1.00, 0.72, 0.36], [1.00, 0.34, 0.05], [0.62, 0.05, 0.01]);
-    this.glow = this.makeLayer(Math.round(240 * quality), 16, 40, this.glowMat);
+    this.glow = this.makeLayer(Math.round(60 * quality), 9, 21, this.glowMat);
 
     // ---- 核心光团 ----
     this.core = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -189,6 +194,12 @@ export class FireEffect extends BaseEffect {
     }
 
     for (const m of this.mats) {
+      m.uniforms.uTime.value = this.time;
+      m.uniforms.uGrow.value = grow;
+      m.uniforms.uContract.value = contract;
+    }
+
+    for (const m of this.flameMats) {
       m.uniforms.uTime.value = this.time;
       m.uniforms.uGrow.value = grow;
       m.uniforms.uContract.value = contract;

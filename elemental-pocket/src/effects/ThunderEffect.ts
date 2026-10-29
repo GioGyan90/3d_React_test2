@@ -39,9 +39,10 @@ const RIBBON_FRAG = /* glsl */`
 
   void main() {
     float d = abs(vSide);
-    float a = pow(1.0 - d, 2.2);
-    vec3 col = mix(uColor, vec3(1.0), pow(1.0 - d, 9.0));
-    gl_FragColor = vec4(col, a * uAlpha);
+    float core = 1.0 - smoothstep(0.05, 0.42, d);
+    float halo = pow(1.0 - d, 2.0) * 0.35;
+    vec3 col = mix(uColor, vec3(0.95, 0.98, 1.0), core * 0.76);
+    gl_FragColor = vec4(col, (core * 0.80 + halo) * uAlpha);
   }
 `;
 
@@ -123,6 +124,8 @@ class Ribbon {
 export class ThunderEffect extends BaseEffect {
   private viewDir: THREE.Vector3;
   private mainBolt: Ribbon;
+  private mainGlow: Ribbon;
+  private lastImpact = new THREE.Vector3(0, 0.03, 0);
   private branchA: Ribbon;
   private branchB: Ribbon;
   private arcs: Ribbon[];
@@ -150,21 +153,25 @@ export class ThunderEffect extends BaseEffect {
 
     // ---- 闪电带 ----
     this.mainBolt = new Ribbon(64);
+    this.mainBolt.mesh.name = 'Lightning trunk';
+    this.mainGlow = new Ribbon(64);
+    this.mainGlow.material.uniforms.uColor.value.set(0.3, 0.48, 1.0);
     this.branchA = new Ribbon(32);
     this.branchB = new Ribbon(32);
-    this.group.add(this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh);
+    this.group.add(this.mainGlow.mesh, this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh);
 
     // ---- 环绕电弧 ----
     this.arcs = [];
     for (let i = 0; i < 3; i++) {
-      const r = new Ribbon(12);
-      r.material.uniforms.uColor.value.set(0.5, 0.75, 1.0);
+      const r = new Ribbon(32);
+      r.mesh.name = 'Connected ground arc';
+      r.material.uniforms.uColor.value.set(0.45, 0.68, 1.0);
       this.group.add(r.mesh);
       this.arcs.push(r);
     }
 
     // ---- 电火花（向心收缩） ----
-    const N = Math.round(620 * quality);
+    const N = Math.round(180 * quality);
     const g = new THREE.BufferGeometry();
     const aSeed = new Float32Array(N), aAng = new Float32Array(N),
           aRad = new Float32Array(N), aHeight = new Float32Array(N),
@@ -174,7 +181,7 @@ export class ThunderEffect extends BaseEffect {
       aAng[i] = Math.random() * TAU;
       aRad[i] = Math.random();
       aHeight[i] = Math.random();
-      aSize[i] = rand(3.5, 11);
+      aSize[i] = rand(2.0, 7.0);
     }
     g.setAttribute('position', new THREE.Float32BufferAttribute(new Float32Array(N * 3), 3));
     g.setAttribute('aSeed', new THREE.Float32BufferAttribute(aSeed, 1));
@@ -318,7 +325,12 @@ export class ThunderEffect extends BaseEffect {
     this.boltAge = 999;
     this.arcTimer = 0;
     this.flashPeak = 0;
-    for (const m of [this.mainBolt, this.branchA, this.branchB]) m.material.uniforms.uAlpha.value = 0;
+    this.lastImpact.set(0, 0.03, 0);
+    for (const m of [this.mainGlow, this.mainBolt, this.branchA, this.branchB, ...this.arcs]) {
+      m.material.uniforms.uAlpha.value = 0;
+      m.mesh.visible = true;
+      m.mesh.scale.setScalar(1);
+    }
   }
 
   onResize(pr: number) {
@@ -338,15 +350,18 @@ export class ThunderEffect extends BaseEffect {
     const bottom = new THREE.Vector3(rand(-0.10, 0.10), 0.02, rand(-0.10, 0.10));
 
     const main = makeBoltPath(top, bottom, 5, 0.20);
-    this.mainBolt.setPath(main, 0.026, this.viewDir);
+    this.lastImpact.copy(bottom);
+    this.arcTimer = 0;
+    this.mainBolt.setPath(main, 0.041, this.viewDir);
+    this.mainGlow.setPath(main, 0.105, this.viewDir);
 
     // 分叉
     const fork = (ribbon: Ribbon) => {
       const i0 = Math.floor(rand(main.length * 0.15, main.length * 0.6));
       const start = main[i0].clone();
       const dir = new THREE.Vector3(rand(-1, 1), rand(-0.75, 0.25), rand(-1, 1)).normalize();
-      const end = start.clone().addScaledVector(dir, rand(0.35, 0.95));
-      ribbon.setPath(makeBoltPath(start, end, 4, 0.28), 0.018, this.viewDir);
+      const end = start.clone().addScaledVector(dir, rand(0.45, 1.05));
+      ribbon.setPath(makeBoltPath(start, end, 4, 0.28), 0.026, this.viewDir);
     };
     fork(this.branchA);
     fork(this.branchB);
@@ -357,23 +372,23 @@ export class ThunderEffect extends BaseEffect {
     this.flash.scale.setScalar(rand(1.3, 2.3));
   }
 
-  buildArc(ribbon: Ribbon) {
-    const a0 = Math.random() * TAU;
-    const span = rand(0.35, 0.95);
-    const pts = [];
-    const steps = 6;
-    for (let i = 0; i <= steps; i++) {
-      const a = a0 + span * (i / steps);
-      const r = RING_R * rand(0.94, 1.14);
-      pts.push(new THREE.Vector3(
-        Math.cos(a) * r,
-        rand(0.0, 0.16),
-        Math.sin(a) * r
-      ));
+  /** Every arc starts at the strike point and runs outward into a jagged ring. */
+  buildArc(ribbon: Ribbon, index: number) {
+    const a0 = (index / this.arcs.length) * TAU + rand(-0.42, 0.42);
+    const span = rand(0.85, 2.0) * (index === 1 ? -1 : 1);
+    const targetR = RING_R * rand(0.90, 1.20);
+    const target = new THREE.Vector3(Math.cos(a0) * targetR, rand(0.03, 0.10), Math.sin(a0) * targetR);
+    const mid = this.lastImpact.clone().lerp(target, rand(0.45, 0.65));
+    mid.y += rand(0.05, 0.16);
+    mid.x += rand(-0.05, 0.05);
+    mid.z += rand(-0.05, 0.05);
+    const pts = [this.lastImpact.clone(), mid, target];
+    for (let i = 1; i <= 13; i++) {
+      const a = a0 + span * (i / 13);
+      const r = targetR * rand(0.92, 1.08);
+      pts.push(new THREE.Vector3(Math.cos(a) * r, rand(0.02, 0.14), Math.sin(a) * r));
     }
-    ribbon.setPath(pts, 0.012, this.viewDir);
-    ribbon.material.uniforms.uAlpha.value = 1;
-    ribbon.mesh.visible = true;
+    ribbon.setPath(pts, rand(0.026, 0.037), this.viewDir);
   }
 
   update(dt: number) {
@@ -393,31 +408,31 @@ export class ThunderEffect extends BaseEffect {
       this.strikeTimer -= dt;
       if (this.strikeTimer <= 0) {
         this.strike();
-        this.strikeTimer = rand(0.42, 0.66);
+        this.strikeTimer = rand(0.52, 0.80);
       }
     }
 
     // 闪电衰减 + 频闪
     this.boltAge += dt;
-    const live = 1 - clamp01(this.boltAge / 0.16);
-    const flick = 0.62 + 0.38 * Math.random();
+    const live = 1 - smooth01(this.boltAge / 0.30);
+    const flick = 0.78 + 0.22 * Math.sin(this.time * 32.0);
     const boltAlpha = live * flick * (1 - contract) * (T >= 0 ? 1 : 0);
     for (const m of [this.mainBolt, this.branchA, this.branchB]) {
       m.material.uniforms.uAlpha.value = boltAlpha;
     }
+    this.mainGlow.material.uniforms.uAlpha.value = boltAlpha * 0.28;
 
-    // 环绕电弧
+    // The ground arcs share the strike point, so the electricity reads as a network.
     this.arcTimer -= dt;
     if (this.arcTimer <= 0) {
-      this.arcTimer = 0.13;
-      for (const arc of this.arcs) {
-        if (T >= 0 && Math.random() < 0.55 && contract < 0.9) this.buildArc(arc);
-        else {
-          arc.mesh.visible = false;
-          arc.material.uniforms.uAlpha.value = 0;
-        }
-      }
+      this.arcTimer = rand(0.20, 0.30);
+      this.arcs.forEach((arc, index) => this.buildArc(arc, index));
     }
+    this.arcs.forEach((arc, index) => {
+      const pulse = 0.72 + 0.28 * Math.sin(this.time * 17 + index * 2.1);
+      arc.material.uniforms.uAlpha.value = grow * (1 - contract) * pulse;
+      arc.mesh.scale.setScalar(1 - contract * 0.88);
+    });
 
     // 闪光衰减
     this.flashPeak = Math.max(0, this.flashPeak - dt * 5.5);

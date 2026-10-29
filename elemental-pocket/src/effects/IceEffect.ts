@@ -25,7 +25,7 @@ function ringStripGeometry(r0: number, r1: number, seg: number, clockwise: boole
   return g;
 }
 
-type Shard = { rj: number; y: number; sx: number; sy: number; sz: number; rx: number; rz: number; spin: number };
+type Shard = { rj: number; angleJitter: number; y: number; sx: number; sy: number; sz: number; rx: number; ry: number; rz: number; spin: number };
 export class IceEffect extends BaseEffect {
   private count: number;
   private freezeDur: number;
@@ -41,18 +41,27 @@ export class IceEffect extends BaseEffect {
   constructor(scene: THREE.Object3D, quality: number) {
     super(scene, 3.9);
 
-    this.count = Math.max(24, Math.round(84 * quality));
+    this.count = Math.max(16, Math.round(42 * quality));
     this.freezeDur = 1.65;
     this.holdEnd = 2.30;
     this.dummy = new THREE.Object3D();
 
     // ---- 冰晶 ----
     const shardGeo = new THREE.OctahedronGeometry(1, 0);
-    shardGeo.scale(0.055, 0.155, 0.055);
+    shardGeo.scale(0.060, 0.155, 0.060);
+    // Per-face colour gives the chunks readable facets without modifying game lights.
+    const faceColors: number[] = [];
+    const position = shardGeo.getAttribute('position');
+    for (let i = 0; i < position.count; i += 3) {
+      const shade = 0.67 + ((i / 3) % 4) * 0.10;
+      for (let v = 0; v < 3; v++) faceColors.push(shade * 0.80, shade * 0.93, shade);
+    }
+    shardGeo.setAttribute('color', new THREE.Float32BufferAttribute(faceColors, 3));
     const shardMat = new THREE.MeshBasicMaterial({
-      color: 0xc8efff,
+      color: 0xd6f2ff,
+      vertexColors: true,
       transparent: true,
-      opacity: 0.95
+      opacity: 0.96
     });
 
     this.shards = new THREE.InstancedMesh(shardGeo, shardMat, this.count);
@@ -62,14 +71,19 @@ export class IceEffect extends BaseEffect {
     this.shardParams = [];
     const tints = [0xbdeaff, 0x9fd8ff, 0xe2f8ff, 0x86c9ee];
     for (let i = 0; i < this.count; i++) {
+      // The large anchors are unevenly spaced, with medium and small fragments between them.
+      const hero = i % 11 === 1 || i % 17 === 4;
+      const size = hero ? rand(2.1, 2.7) : i % 4 === 0 ? rand(1.0, 1.5) : rand(0.32, 0.72);
       this.shardParams.push({
-        rj: rand(-0.05, 0.06),
-        y: rand(0.0, 0.10),
-        sx: rand(0.75, 1.45),
-        sy: rand(0.65, 1.75),
-        sz: rand(0.75, 1.45),
-        rx: rand(-0.35, 0.35),
-        rz: rand(-0.35, 0.35),
+        rj: rand(-0.08, 0.08),
+        angleJitter: rand(-0.32, 0.32) * TAU / this.count,
+        y: rand(0.01, 0.07),
+        sx: size * rand(0.82, 1.28),
+        sy: size * rand(0.70, 1.18),
+        sz: size * rand(0.82, 1.28),
+        rx: rand(-0.50, 0.50),
+        ry: rand(-Math.PI, Math.PI),
+        rz: rand(-0.50, 0.50),
         spin: rand(-1.1, 1.1)
       });
       this.shards.setColorAt(i, new THREE.Color(tints[i % tints.length]));
@@ -145,7 +159,7 @@ export class IceEffect extends BaseEffect {
     this.group.add(this.frost);
 
     // ---- 碎冰屑 ----
-    const N = Math.round(900 * quality);
+    const N = Math.round(350 * quality);
     const g = new THREE.BufferGeometry();
     const aShard = new Float32Array(N), aSeed = new Float32Array(N);
     const aOff = new Float32Array(N * 3);
@@ -243,8 +257,8 @@ export class IceEffect extends BaseEffect {
     // ---- 冰晶 ----
     for (let i = 0; i < this.count; i++) {
       const f = i / this.count;
-      const a = Math.PI * 0.5 - f * TAU;          // 顺时针序号
       const s = this.shardParams[i];
+      const a = Math.PI * 0.5 - f * TAU + s.angleJitter; // 保持顺时针次序，同时打破均匀间距
 
       const appear = clamp01((front - f) / 0.045);
       const gone = smooth01((crack - f) / 0.12);
@@ -259,9 +273,9 @@ export class IceEffect extends BaseEffect {
         Math.sin(a) * (RING_R + s.rj) * (1 - gone * 0.8)
       );
       this.dummy.rotation.set(
-        s.rx + this.time * s.spin * 0.35,
-        -a + this.time * s.spin,
-        s.rz
+        s.rx + gone * s.spin * 1.4,
+        -a + s.ry + gone * s.spin * 2.0,
+        s.rz + gone * s.spin
       );
       this.dummy.scale.set(s.sx * sc, s.sy * sc, s.sz * sc);
       this.dummy.updateMatrix();

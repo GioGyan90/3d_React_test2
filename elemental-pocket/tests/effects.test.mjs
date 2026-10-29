@@ -78,7 +78,68 @@ test('invalid values are rejected and quality controls particle count', () => {
   assert.throws(() => effects.play('fire', { duration: NaN }), /duration/);
   assert.throws(() => effects.update(-1), /deltaSeconds/);
   effects.play('fire');
-  const points = scene.children[0].children.find(child => child.isPoints);
-  assert.equal(points.geometry.attributes.position.count, Math.round(950 * 0.35));
+  const lowCount = scene.children[0].children.find(child => child.isPoints).geometry.attributes.position.count;
+  const highScene = new THREE.Scene();
+  const high = new PocketEffects(highScene, { quality: 'high' });
+  high.play('fire');
+  const highCount = highScene.children[0].children.find(child => child.isPoints).geometry.attributes.position.count;
+  assert.ok(lowCount < highCount);
   effects.dispose();
+  high.dispose();
+});
+
+
+test('fire has a connected mesh body as well as sparse embers', () => {
+  const scene = new THREE.Scene();
+  const fx = new PocketEffects(scene);
+  fx.play('fire');
+  const body = scene.children[0].children.filter(child => child.name === 'Continuous flame');
+  assert.ok(body.length >= 1);
+  assert.ok(body[0].geometry.index.count > 100);
+  assert.ok(scene.children[0].children.some(child => child.isPoints));
+  fx.dispose();
+});
+
+test('ground lightning arcs meet the main strike at a common point', () => {
+  const scene = new THREE.Scene();
+  const fx = new PocketEffects(scene);
+  fx.play('thunder');
+  fx.update(0.15);
+  const group = scene.children[0];
+  const trunk = group.children.find(child => child.name === 'Lightning trunk');
+  const arcs = group.children.filter(child => child.name === 'Connected ground arc');
+  const centerAt = (geometry, pointIndex) => {
+    const p = geometry.attributes.position.array;
+    const offset = pointIndex * 6;
+    return new THREE.Vector3((p[offset] + p[offset + 3]) / 2, (p[offset + 1] + p[offset + 4]) / 2, (p[offset + 2] + p[offset + 5]) / 2);
+  };
+  const end = centerAt(trunk.geometry, trunk.geometry.drawRange.count / 6);
+  assert.ok(arcs.length >= 2);
+  for (const arc of arcs) assert.ok(centerAt(arc.geometry, 0).distanceTo(end) < 1e-5);
+  fx.dispose();
+});
+
+test('ice and leaves have a visible range of sizes and leaf orientations', () => {
+  const scalesAndRotations = (type, elapsed) => {
+    const scene = new THREE.Scene();
+    const fx = new PocketEffects(scene);
+    fx.play(type);
+    fx.update(elapsed);
+    const mesh = scene.children[0].children.find(child => child.isInstancedMesh);
+    const scales = [], rotations = [];
+    const matrix = new THREE.Matrix4();
+    for (let i = 0; i < mesh.count; i++) {
+      mesh.getMatrixAt(i, matrix);
+      const position = new THREE.Vector3(), rotation = new THREE.Quaternion(), scale = new THREE.Vector3();
+      matrix.decompose(position, rotation, scale);
+      if (scale.y > 0.05) { scales.push(scale.y); rotations.push(rotation); }
+    }
+    fx.dispose();
+    return { scales, rotations };
+  };
+  const ice = scalesAndRotations('ice', 2.0);
+  const leaves = scalesAndRotations('grass', 1.2);
+  assert.ok(Math.max(...ice.scales) / Math.min(...ice.scales) > 3);
+  assert.ok(Math.max(...leaves.scales) / Math.min(...leaves.scales) > 3);
+  assert.ok(leaves.rotations.some(q => Math.abs(q.dot(leaves.rotations[0])) < 0.9));
 });

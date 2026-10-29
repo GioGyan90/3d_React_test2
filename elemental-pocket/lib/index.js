@@ -1,11 +1,11 @@
 import * as a from "three";
-const w = Math.PI * 2, g = 0.46, M = (d) => Math.max(0, Math.min(1, d)), v = (d) => {
-  const t = M(d);
+const b = Math.PI * 2, w = 0.46, x = (f) => Math.max(0, Math.min(1, f)), v = (f) => {
+  const t = x(f);
   return t * t * (3 - 2 * t);
-}, T = (d) => {
-  const t = M(d);
+}, R = (f) => {
+  const t = x(f);
   return t * t;
-}, f = (d, t) => d + Math.random() * (t - d);
+}, c = (f, t) => f + Math.random() * (t - f);
 class S {
   constructor(t, e) {
     this.group = new a.Group(), this.t = -1, this.time = 0, this.duration = e, this.group.visible = !1, t.add(this.group);
@@ -32,37 +32,132 @@ class S {
   onCamera(t) {
   }
 }
-function C(d, t = 256) {
+function P(f, t = 256) {
   const e = document.createElement("canvas");
   e.width = e.height = t;
-  const r = e.getContext("2d");
-  if (!r) throw new Error("Canvas 2D is not available");
-  const i = r.createRadialGradient(t / 2, t / 2, 0, t / 2, t / 2, t / 2);
-  for (const [o, n] of d) i.addColorStop(o, n);
-  r.fillStyle = i, r.fillRect(0, 0, t, t);
-  const s = new a.CanvasTexture(e);
-  return s.colorSpace = a.SRGBColorSpace, s;
+  const s = e.getContext("2d");
+  if (!s) throw new Error("Canvas 2D is not available");
+  const i = s.createRadialGradient(t / 2, t / 2, 0, t / 2, t / 2, t / 2);
+  for (const [r, n] of f) i.addColorStop(r, n);
+  s.fillStyle = i, s.fillRect(0, 0, t, t);
+  const o = new a.CanvasTexture(e);
+  return o.colorSpace = a.SRGBColorSpace, o;
 }
-function k(d = 512) {
+function k(f = 512) {
   const t = document.createElement("canvas");
-  t.width = t.height = d;
+  t.width = t.height = f;
   const e = t.getContext("2d");
   if (!e) throw new Error("Canvas 2D is not available");
-  const r = d / 2, i = d / 2, s = e.createRadialGradient(r, i, d * 0.08, r, i, d * 0.5);
-  s.addColorStop(0, "rgba(185,238,255,0.55)"), s.addColorStop(0.5, "rgba(120,200,255,0.20)"), s.addColorStop(1, "rgba(120,200,255,0)"), e.fillStyle = s, e.fillRect(0, 0, d, d), e.globalCompositeOperation = "lighter";
+  const s = f / 2, i = f / 2, o = e.createRadialGradient(s, i, f * 0.08, s, i, f * 0.5);
+  o.addColorStop(0, "rgba(185,238,255,0.55)"), o.addColorStop(0.5, "rgba(120,200,255,0.20)"), o.addColorStop(1, "rgba(120,200,255,0)"), e.fillStyle = o, e.fillRect(0, 0, f, f), e.globalCompositeOperation = "lighter";
   for (let n = 0; n < 110; n++) {
-    const h = Math.random() * w, u = d * 0.1 + Math.random() * d * 0.12, c = u + d * 0.06 + Math.random() * d * 0.2;
-    e.strokeStyle = `rgba(205,246,255,${f(0.08, 0.3)})`, e.lineWidth = f(0.8, 2.6), e.beginPath(), e.moveTo(r + Math.cos(h) * u, i + Math.sin(h) * u);
+    const u = Math.random() * b, h = f * 0.1 + Math.random() * f * 0.12, d = h + f * 0.06 + Math.random() * f * 0.2;
+    e.strokeStyle = `rgba(205,246,255,${c(0.08, 0.3)})`, e.lineWidth = c(0.8, 2.6), e.beginPath(), e.moveTo(s + Math.cos(u) * h, i + Math.sin(u) * h);
     for (let l = 1; l <= 3; l++) {
-      const m = u + (c - u) * (l / 3), p = h + f(-0.09, 0.09);
-      e.lineTo(r + Math.cos(p) * m, i + Math.sin(p) * m);
+      const m = h + (d - h) * (l / 3), p = u + c(-0.09, 0.09);
+      e.lineTo(s + Math.cos(p) * m, i + Math.sin(p) * m);
     }
     e.stroke();
   }
-  const o = new a.CanvasTexture(t);
-  return o.colorSpace = a.SRGBColorSpace, o;
+  const r = new a.CanvasTexture(t);
+  return r.colorSpace = a.SRGBColorSpace, r;
 }
-const B = (
+function B() {
+  const e = [], s = [], i = [];
+  for (let r = 0; r <= 18; r++) {
+    const n = r / 18;
+    for (let u = 0; u <= 112; u++) {
+      const h = u / 112, d = h * b;
+      if (e.push(Math.cos(d), n, Math.sin(d)), s.push(h, n), r < 18 && u < 112) {
+        const l = r * 113 + u;
+        i.push(l, l + 112 + 1, l + 1), i.push(l + 1, l + 112 + 1, l + 112 + 2);
+      }
+    }
+  }
+  const o = new a.BufferGeometry();
+  return o.setAttribute("position", new a.Float32BufferAttribute(e, 3)), o.setAttribute("uv", new a.Float32BufferAttribute(s, 2)), o.setIndex(i), o;
+}
+const G = (
+  /* glsl */
+  `
+  uniform float uTime, uGrow, uContract, uRadius, uHeight, uPhase;
+  varying vec2 vUv;
+  varying float vAngle;
+
+  void main() {
+    vUv = uv;
+    float a = uv.x * 6.28318530718;
+    float h = uv.y;
+    vAngle = a;
+    float curl = (sin(a * 3.0 - uTime * 1.4 + h * 4.0 + uPhase) * 0.10
+                + sin(a * 7.0 + uTime * 1.1 + h * 5.0) * 0.035) * h;
+    float angle = a + curl + uContract * 1.8;
+    float ripple = sin(a * 5.0 + uTime * 2.0 + h * 6.0 + uPhase) * 0.025 * h;
+    float radius = (uRadius + ripple) * mix(1.0, 0.04, uContract);
+    float y = h * uHeight * uGrow * mix(1.0, 0.15, uContract);
+    vec3 p = vec3(cos(angle) * radius, y, sin(angle) * radius);
+    gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0);
+  }
+`
+), E = (
+  /* glsl */
+  `
+  uniform float uTime, uGrow, uContract, uOpacity, uPhase;
+  varying vec2 vUv;
+  varying float vAngle;
+
+  void main() {
+    float a = vAngle;
+    float h = vUv.y;
+    // Several slowly shifting harmonics make broad, unequal, connected tongues.
+    float crown = 0.57
+      + 0.18 * sin(a * 3.0 + uTime * 1.25 + uPhase)
+      + 0.12 * sin(a * 7.0 - uTime * 0.85 + 0.8)
+      + 0.06 * sin(a * 11.0 + uTime * 1.7 + 1.3);
+    float silhouette = 1.0 - smoothstep(crown - 0.08, crown + 0.045, h);
+    float flow = sin(a * 6.0 - h * 9.0 + uTime * 2.7 + uPhase)
+               + 0.5 * sin(a * 13.0 + h * 15.0 - uTime * 3.2);
+    float flicker = 0.82 + 0.18 * sin(uTime * 5.1 + a * 5.0);
+    float base = smoothstep(0.0, 0.06, h);
+    float opacity = silhouette * base * flicker * uOpacity * uGrow * (1.0 - uContract);
+    opacity *= 0.80 + 0.20 * smoothstep(-1.1, 1.0, flow);
+    vec3 deep = vec3(0.88, 0.10, 0.015);
+    vec3 amber = vec3(1.0, 0.36, 0.035);
+    vec3 gold = vec3(1.0, 0.74, 0.22);
+    vec3 color = mix(amber, deep, smoothstep(0.18, 0.80, h));
+    float hot = (1.0 - smoothstep(0.08, 0.43, h)) * (0.55 + 0.45 * smoothstep(-0.1, 1.0, flow));
+    color = mix(color, gold, hot * 0.74);
+    gl_FragColor = vec4(color, opacity);
+  }
+`
+);
+function I(f) {
+  const t = B(), e = [], s = [
+    { radius: w * 1.02, height: 1.08, opacity: 0.64, phase: 0 },
+    { radius: w * 0.77, height: 0.9, opacity: 0.57, phase: 2.1 }
+  ];
+  for (const i of s) {
+    const o = new a.ShaderMaterial({
+      uniforms: {
+        uTime: { value: 0 },
+        uGrow: { value: 0 },
+        uContract: { value: 0 },
+        uRadius: { value: i.radius },
+        uHeight: { value: i.height },
+        uOpacity: { value: i.opacity },
+        uPhase: { value: i.phase }
+      },
+      vertexShader: G,
+      fragmentShader: E,
+      transparent: !0,
+      depthWrite: !1,
+      side: a.DoubleSide
+    }), r = new a.Mesh(t, o);
+    r.name = "Continuous flame", r.frustumCulled = !1, f.add(r), e.push(o);
+  }
+  return e;
+}
+const z = (
   /* glsl */
   `
   attribute float aSeed;
@@ -105,7 +200,7 @@ const B = (
     vFade = uGrow * (1.0 - smoothstep(0.60, 1.0, life)) * (1.0 - uContract * 0.92);
   }
 `
-), G = (
+), _ = (
   /* glsl */
   `
   uniform vec3 uC1, uC2, uC3;
@@ -129,29 +224,29 @@ const B = (
   }
 `
 );
-class E extends S {
+class V extends S {
   constructor(t, e) {
     super(t, 3.9), this.mats = [];
-    const r = C([
+    const s = P([
       [0, "rgba(255,255,255,1)"],
       [0.3, "rgba(255,255,255,0.50)"],
       [0.65, "rgba(255,255,255,0.10)"],
       [1, "rgba(255,255,255,0)"]
     ]);
-    this.lickMat = this.makePointMat(
+    this.flameMats = I(this.group), this.lickMat = this.makePointMat(
       1,
       0.5,
       [1, 0.88, 0.58],
       [1, 0.42, 0.08],
       [0.8, 0.1, 0.02]
-    ), this.licks = this.makeLayer(Math.round(950 * e), 7, 20, this.lickMat), this.glowMat = this.makePointMat(
+    ), this.licks = this.makeLayer(Math.round(240 * e), 3, 10, this.lickMat), this.glowMat = this.makePointMat(
       1.95,
       0.12,
       [1, 0.72, 0.36],
       [1, 0.34, 0.05],
       [0.62, 0.05, 0.01]
-    ), this.glow = this.makeLayer(Math.round(240 * e), 16, 40, this.glowMat), this.core = new a.Sprite(new a.SpriteMaterial({
-      map: r,
+    ), this.glow = this.makeLayer(Math.round(60 * e), 9, 21, this.glowMat), this.core = new a.Sprite(new a.SpriteMaterial({
+      map: s,
       color: 16756838,
       transparent: !0,
       blending: a.AdditiveBlending,
@@ -160,7 +255,7 @@ class E extends S {
     })), this.core.position.set(0, 0.16, 0), this.core.scale.setScalar(0.7), this.group.add(this.core), this.groundGlow = new a.Mesh(
       new a.PlaneGeometry(1.9, 1.9),
       new a.MeshBasicMaterial({
-        map: r,
+        map: s,
         color: 16738846,
         transparent: !0,
         blending: a.AdditiveBlending,
@@ -169,34 +264,34 @@ class E extends S {
       })
     ), this.groundGlow.rotation.x = -Math.PI / 2, this.groundGlow.position.y = 4e-3, this.groundGlow.renderOrder = -1, this.group.add(this.groundGlow);
   }
-  makePointMat(t, e, r, i, s) {
-    const o = new a.ShaderMaterial({
+  makePointMat(t, e, s, i, o) {
+    const r = new a.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uGrow: { value: 0 },
         uContract: { value: 0 },
-        uRadius: { value: g },
+        uRadius: { value: w },
         uPixelRatio: { value: 1 },
         uSizeMul: { value: t },
         uAlpha: { value: e },
-        uC1: { value: new a.Vector3(r[0], r[1], r[2]) },
+        uC1: { value: new a.Vector3(s[0], s[1], s[2]) },
         uC2: { value: new a.Vector3(i[0], i[1], i[2]) },
-        uC3: { value: new a.Vector3(s[0], s[1], s[2]) }
+        uC3: { value: new a.Vector3(o[0], o[1], o[2]) }
       },
-      vertexShader: B,
-      fragmentShader: G,
+      vertexShader: z,
+      fragmentShader: _,
       transparent: !0,
       depthWrite: !1,
       blending: a.AdditiveBlending
     });
-    return this.mats.push(o), o;
+    return this.mats.push(r), r;
   }
-  makeLayer(t, e, r, i) {
-    const s = new a.BufferGeometry(), o = new Float32Array(t), n = new Float32Array(t), h = new Float32Array(t), u = new Float32Array(t), c = new Float32Array(t);
+  makeLayer(t, e, s, i) {
+    const o = new a.BufferGeometry(), r = new Float32Array(t), n = new Float32Array(t), u = new Float32Array(t), h = new Float32Array(t), d = new Float32Array(t);
     for (let m = 0; m < t; m++)
-      o[m] = Math.random(), n[m] = Math.random() * w, h[m] = Math.random(), u[m] = 0.6 + Math.random() * 0.85, c[m] = f(e, r);
-    s.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(t * 3), 3)), s.setAttribute("aSeed", new a.Float32BufferAttribute(o, 1)), s.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), s.setAttribute("aRad", new a.Float32BufferAttribute(h, 1)), s.setAttribute("aHeight", new a.Float32BufferAttribute(u, 1)), s.setAttribute("aSize", new a.Float32BufferAttribute(c, 1));
-    const l = new a.Points(s, i);
+      r[m] = Math.random(), n[m] = Math.random() * b, u[m] = Math.random(), h[m] = 0.6 + Math.random() * 0.85, d[m] = c(e, s);
+    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(t * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(d, 1));
+    const l = new a.Points(o, i);
     return l.frustumCulled = !1, this.group.add(l), l;
   }
   onResize(t) {
@@ -204,27 +299,29 @@ class E extends S {
   }
   update() {
     const t = this.t;
-    let e, r;
-    t < 0 ? (e = 0.13 + 0.03 * Math.sin(this.time * 1.8), r = 0) : (e = v(t / 0.65), r = v((t - 2.45) / 1.05));
-    for (const o of this.mats)
-      o.uniforms.uTime.value = this.time, o.uniforms.uGrow.value = e, o.uniforms.uContract.value = r;
-    const i = 0.86 + 0.14 * Math.sin(this.time * 9) * Math.sin(this.time * 3.7), s = 1 - r;
-    this.core.material.opacity = 0.4 * e * s * i, this.core.scale.setScalar((0.52 + 0.38 * e) * (1 - r * 0.9)), this.core.position.y = 0.14 + 0.06 * e, this.groundGlow.material.opacity = 0.27 * e * s * i, this.groundGlow.scale.setScalar(0.85 + 0.55 * e);
+    let e, s;
+    t < 0 ? (e = 0.13 + 0.03 * Math.sin(this.time * 1.8), s = 0) : (e = v(t / 0.65), s = v((t - 2.45) / 1.05));
+    for (const r of this.mats)
+      r.uniforms.uTime.value = this.time, r.uniforms.uGrow.value = e, r.uniforms.uContract.value = s;
+    for (const r of this.flameMats)
+      r.uniforms.uTime.value = this.time, r.uniforms.uGrow.value = e, r.uniforms.uContract.value = s;
+    const i = 0.86 + 0.14 * Math.sin(this.time * 9) * Math.sin(this.time * 3.7), o = 1 - s;
+    this.core.material.opacity = 0.4 * e * o * i, this.core.scale.setScalar((0.52 + 0.38 * e) * (1 - s * 0.9)), this.core.position.y = 0.14 + 0.06 * e, this.groundGlow.material.opacity = 0.27 * e * o * i, this.groundGlow.scale.setScalar(0.85 + 0.55 * e);
   }
 }
-function P(d, t, e, r) {
-  let i = [d.clone(), t.clone()], s = d.distanceTo(t) * r;
-  for (let o = 0; o < e; o++) {
+function T(f, t, e, s) {
+  let i = [f.clone(), t.clone()], o = f.distanceTo(t) * s;
+  for (let r = 0; r < e; r++) {
     const n = [i[0]];
-    for (let h = 0; h < i.length - 1; h++) {
-      const u = i[h], c = i[h + 1], l = u.clone().add(c).multiplyScalar(0.5);
-      l.x += f(-0.5, 0.5) * s, l.z += f(-0.5, 0.5) * s, l.y += f(-0.5, 0.5) * s * 0.25, n.push(l, c);
+    for (let u = 0; u < i.length - 1; u++) {
+      const h = i[u], d = i[u + 1], l = h.clone().add(d).multiplyScalar(0.5);
+      l.x += c(-0.5, 0.5) * o, l.z += c(-0.5, 0.5) * o, l.y += c(-0.5, 0.5) * o * 0.25, n.push(l, d);
     }
-    i = n, s *= 0.55;
+    i = n, o *= 0.55;
   }
   return i;
 }
-const z = (
+const O = (
   /* glsl */
   `
   attribute float aSide;
@@ -234,7 +331,7 @@ const z = (
     gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
   }
 `
-), I = (
+), U = (
   /* glsl */
   `
   uniform vec3 uColor;
@@ -243,71 +340,72 @@ const z = (
 
   void main() {
     float d = abs(vSide);
-    float a = pow(1.0 - d, 2.2);
-    vec3 col = mix(uColor, vec3(1.0), pow(1.0 - d, 9.0));
-    gl_FragColor = vec4(col, a * uAlpha);
+    float core = 1.0 - smoothstep(0.05, 0.42, d);
+    float halo = pow(1.0 - d, 2.0) * 0.35;
+    vec3 col = mix(uColor, vec3(0.95, 0.98, 1.0), core * 0.76);
+    gl_FragColor = vec4(col, (core * 0.80 + halo) * uAlpha);
   }
 `
 );
-class x {
+class A {
   constructor(t) {
     this.maxPts = t, this.pos = new Float32Array(t * 2 * 3);
     const e = new Float32Array(t * 2);
-    for (let s = 0; s < t; s++)
-      e[s * 2] = -1, e[s * 2 + 1] = 1;
-    const r = [];
-    for (let s = 0; s < t - 1; s++) {
-      const o = s * 2;
-      r.push(o, o + 1, o + 2, o + 1, o + 3, o + 2);
+    for (let o = 0; o < t; o++)
+      e[o * 2] = -1, e[o * 2 + 1] = 1;
+    const s = [];
+    for (let o = 0; o < t - 1; o++) {
+      const r = o * 2;
+      s.push(r, r + 1, r + 2, r + 1, r + 3, r + 2);
     }
     const i = new a.BufferGeometry();
-    i.setAttribute("position", new a.BufferAttribute(this.pos, 3)), i.setAttribute("aSide", new a.BufferAttribute(e, 1)), i.setIndex(r), this.geo = i, this.material = new a.ShaderMaterial({
+    i.setAttribute("position", new a.BufferAttribute(this.pos, 3)), i.setAttribute("aSide", new a.BufferAttribute(e, 1)), i.setIndex(s), this.geo = i, this.material = new a.ShaderMaterial({
       uniforms: {
         uColor: { value: new a.Vector3(0.55, 0.78, 1) },
         uAlpha: { value: 0 }
       },
-      vertexShader: z,
-      fragmentShader: I,
+      vertexShader: O,
+      fragmentShader: U,
       transparent: !0,
       depthWrite: !1,
       side: a.DoubleSide,
       blending: a.AdditiveBlending
     }), this.mesh = new a.Mesh(i, this.material), this.mesh.frustumCulled = !1;
   }
-  setPath(t, e, r) {
-    const i = Math.min(t.length, this.maxPts), s = new a.Vector3(), o = new a.Vector3();
+  setPath(t, e, s) {
+    const i = Math.min(t.length, this.maxPts), o = new a.Vector3(), r = new a.Vector3();
     for (let n = 0; n < i; n++) {
-      const h = t[n], u = t[Math.max(0, n - 1)], c = t[Math.min(t.length - 1, n + 1)];
-      s.subVectors(c, u), s.lengthSq() < 1e-9 && s.set(0, 1, 0), s.normalize(), o.crossVectors(s, r), o.lengthSq() < 1e-9 && o.set(1, 0, 0), o.normalize().multiplyScalar(e);
+      const u = t[n], h = t[Math.max(0, n - 1)], d = t[Math.min(t.length - 1, n + 1)];
+      o.subVectors(d, h), o.lengthSq() < 1e-9 && o.set(0, 1, 0), o.normalize(), r.crossVectors(o, s), r.lengthSq() < 1e-9 && r.set(1, 0, 0), r.normalize().multiplyScalar(e);
       const l = n * 6;
-      this.pos[l] = h.x + o.x, this.pos[l + 1] = h.y + o.y, this.pos[l + 2] = h.z + o.z, this.pos[l + 3] = h.x - o.x, this.pos[l + 4] = h.y - o.y, this.pos[l + 5] = h.z - o.z;
+      this.pos[l] = u.x + r.x, this.pos[l + 1] = u.y + r.y, this.pos[l + 2] = u.z + r.z, this.pos[l + 3] = u.x - r.x, this.pos[l + 4] = u.y - r.y, this.pos[l + 5] = u.z - r.z;
     }
     this.geo.setDrawRange(0, (i - 1) * 6), this.geo.attributes.position.needsUpdate = !0;
   }
 }
-class _ extends S {
+class D extends S {
   constructor(t, e) {
-    super(t, 3.6), this.viewDir = new a.Vector3(0, 0.24, 1).normalize();
-    const r = C([
+    super(t, 3.6), this.lastImpact = new a.Vector3(0, 0.03, 0), this.viewDir = new a.Vector3(0, 0.24, 1).normalize();
+    const s = P([
       [0, "rgba(255,255,255,1)"],
       [0.25, "rgba(200,225,255,0.55)"],
       [0.62, "rgba(150,190,255,0.12)"],
       [1, "rgba(150,190,255,0)"]
     ]);
-    this.mainBolt = new x(64), this.branchA = new x(32), this.branchB = new x(32), this.group.add(this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh), this.arcs = [];
+    this.mainBolt = new A(64), this.mainBolt.mesh.name = "Lightning trunk", this.mainGlow = new A(64), this.mainGlow.material.uniforms.uColor.value.set(0.3, 0.48, 1), this.branchA = new A(32), this.branchB = new A(32), this.group.add(this.mainGlow.mesh, this.mainBolt.mesh, this.branchA.mesh, this.branchB.mesh), this.arcs = [];
     for (let l = 0; l < 3; l++) {
-      const m = new x(12);
-      m.material.uniforms.uColor.value.set(0.5, 0.75, 1), this.group.add(m.mesh), this.arcs.push(m);
+      const m = new A(32);
+      m.mesh.name = "Connected ground arc", m.material.uniforms.uColor.value.set(0.45, 0.68, 1), this.group.add(m.mesh), this.arcs.push(m);
     }
-    const i = Math.round(620 * e), s = new a.BufferGeometry(), o = new Float32Array(i), n = new Float32Array(i), h = new Float32Array(i), u = new Float32Array(i), c = new Float32Array(i);
+    const i = Math.round(180 * e), o = new a.BufferGeometry(), r = new Float32Array(i), n = new Float32Array(i), u = new Float32Array(i), h = new Float32Array(i), d = new Float32Array(i);
     for (let l = 0; l < i; l++)
-      o[l] = Math.random(), n[l] = Math.random() * w, h[l] = Math.random(), u[l] = Math.random(), c[l] = f(3.5, 11);
-    s.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(i * 3), 3)), s.setAttribute("aSeed", new a.Float32BufferAttribute(o, 1)), s.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), s.setAttribute("aRad", new a.Float32BufferAttribute(h, 1)), s.setAttribute("aHeight", new a.Float32BufferAttribute(u, 1)), s.setAttribute("aSize", new a.Float32BufferAttribute(c, 1)), this.sparkMat = new a.ShaderMaterial({
+      r[l] = Math.random(), n[l] = Math.random() * b, u[l] = Math.random(), h[l] = Math.random(), d[l] = c(2, 7);
+    o.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(i * 3), 3)), o.setAttribute("aSeed", new a.Float32BufferAttribute(r, 1)), o.setAttribute("aAng", new a.Float32BufferAttribute(n, 1)), o.setAttribute("aRad", new a.Float32BufferAttribute(u, 1)), o.setAttribute("aHeight", new a.Float32BufferAttribute(h, 1)), o.setAttribute("aSize", new a.Float32BufferAttribute(d, 1)), this.sparkMat = new a.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uGrow: { value: 0 },
         uContract: { value: 0 },
-        uRadius: { value: g },
+        uRadius: { value: w },
         uPixelRatio: { value: 1 },
         uColor: { value: new a.Vector3(0.62, 0.82, 1) }
       },
@@ -366,7 +464,7 @@ class _ extends S {
       transparent: !0,
       depthWrite: !1,
       blending: a.AdditiveBlending
-    }), this.sparks = new a.Points(s, this.sparkMat), this.sparks.frustumCulled = !1, this.group.add(this.sparks), this.ringMat = new a.ShaderMaterial({
+    }), this.sparks = new a.Points(o, this.sparkMat), this.sparks.frustumCulled = !1, this.group.add(this.sparks), this.ringMat = new a.ShaderMaterial({
       uniforms: {
         uTime: { value: 0 },
         uGrow: { value: 0 },
@@ -402,10 +500,10 @@ class _ extends S {
       side: a.DoubleSide,
       blending: a.AdditiveBlending
     }), this.ring = new a.Mesh(
-      new a.TorusGeometry(g, 0.012, 8, 220),
+      new a.TorusGeometry(w, 0.012, 8, 220),
       this.ringMat
     ), this.ring.rotation.x = -Math.PI / 2, this.ring.position.y = 0.012, this.group.add(this.ring), this.flash = new a.Sprite(new a.SpriteMaterial({
-      map: r,
+      map: s,
       color: 13624063,
       transparent: !0,
       blending: a.AdditiveBlending,
@@ -414,7 +512,7 @@ class _ extends S {
     })), this.flash.position.set(0, 1.4, 0), this.flash.scale.setScalar(1.6), this.group.add(this.flash), this.groundFlash = new a.Mesh(
       new a.PlaneGeometry(2, 2),
       new a.MeshBasicMaterial({
-        map: r,
+        map: s,
         color: 7252223,
         transparent: !0,
         blending: a.AdditiveBlending,
@@ -424,8 +522,9 @@ class _ extends S {
     ), this.groundFlash.rotation.x = -Math.PI / 2, this.groundFlash.position.y = 5e-3, this.group.add(this.groundFlash), this.strikeTimer = 0, this.boltAge = 999, this.arcTimer = 0, this.flashPeak = 0;
   }
   onPlay() {
-    this.strikeTimer = 0.1, this.boltAge = 999, this.arcTimer = 0, this.flashPeak = 0;
-    for (const t of [this.mainBolt, this.branchA, this.branchB]) t.material.uniforms.uAlpha.value = 0;
+    this.strikeTimer = 0.1, this.boltAge = 999, this.arcTimer = 0, this.flashPeak = 0, this.lastImpact.set(0, 0.03, 0);
+    for (const t of [this.mainGlow, this.mainBolt, this.branchA, this.branchB, ...this.arcs])
+      t.material.uniforms.uAlpha.value = 0, t.mesh.visible = !0, t.mesh.scale.setScalar(1);
   }
   onResize(t) {
     this.sparkMat.uniforms.uPixelRatio.value = t;
@@ -436,80 +535,83 @@ class _ extends S {
     this.group.updateWorldMatrix(!0, !1), this.group.worldToLocal(e), e.lengthSq() > 1e-4 && this.viewDir.copy(e).normalize();
   }
   strike() {
-    const t = new a.Vector3(f(-0.8, 0.8), f(1.9, 2.5), f(-0.85, 0.75)), e = new a.Vector3(f(-0.1, 0.1), 0.02, f(-0.1, 0.1)), r = P(t, e, 5, 0.2);
-    this.mainBolt.setPath(r, 0.026, this.viewDir);
-    const i = (s) => {
-      const o = Math.floor(f(r.length * 0.15, r.length * 0.6)), n = r[o].clone(), h = new a.Vector3(f(-1, 1), f(-0.75, 0.25), f(-1, 1)).normalize(), u = n.clone().addScaledVector(h, f(0.35, 0.95));
-      s.setPath(P(n, u, 4, 0.28), 0.018, this.viewDir);
+    const t = new a.Vector3(c(-0.8, 0.8), c(1.9, 2.5), c(-0.85, 0.75)), e = new a.Vector3(c(-0.1, 0.1), 0.02, c(-0.1, 0.1)), s = T(t, e, 5, 0.2);
+    this.lastImpact.copy(e), this.arcTimer = 0, this.mainBolt.setPath(s, 0.041, this.viewDir), this.mainGlow.setPath(s, 0.105, this.viewDir);
+    const i = (o) => {
+      const r = Math.floor(c(s.length * 0.15, s.length * 0.6)), n = s[r].clone(), u = new a.Vector3(c(-1, 1), c(-0.75, 0.25), c(-1, 1)).normalize(), h = n.clone().addScaledVector(u, c(0.45, 1.05));
+      o.setPath(T(n, h, 4, 0.28), 0.026, this.viewDir);
     };
-    i(this.branchA), i(this.branchB), this.boltAge = 0, this.flashPeak = 1, this.flash.position.copy(t), this.flash.scale.setScalar(f(1.3, 2.3));
+    i(this.branchA), i(this.branchB), this.boltAge = 0, this.flashPeak = 1, this.flash.position.copy(t), this.flash.scale.setScalar(c(1.3, 2.3));
   }
-  buildArc(t) {
-    const e = Math.random() * w, r = f(0.35, 0.95), i = [], s = 6;
-    for (let o = 0; o <= s; o++) {
-      const n = e + r * (o / s), h = g * f(0.94, 1.14);
-      i.push(new a.Vector3(
-        Math.cos(n) * h,
-        f(0, 0.16),
-        Math.sin(n) * h
-      ));
+  /** Every arc starts at the strike point and runs outward into a jagged ring. */
+  buildArc(t, e) {
+    const s = e / this.arcs.length * b + c(-0.42, 0.42), i = c(0.85, 2) * (e === 1 ? -1 : 1), o = w * c(0.9, 1.2), r = new a.Vector3(Math.cos(s) * o, c(0.03, 0.1), Math.sin(s) * o), n = this.lastImpact.clone().lerp(r, c(0.45, 0.65));
+    n.y += c(0.05, 0.16), n.x += c(-0.05, 0.05), n.z += c(-0.05, 0.05);
+    const u = [this.lastImpact.clone(), n, r];
+    for (let h = 1; h <= 13; h++) {
+      const d = s + i * (h / 13), l = o * c(0.92, 1.08);
+      u.push(new a.Vector3(Math.cos(d) * l, c(0.02, 0.14), Math.sin(d) * l));
     }
-    t.setPath(i, 0.012, this.viewDir), t.material.uniforms.uAlpha.value = 1, t.mesh.visible = !0;
+    t.setPath(u, c(0.026, 0.037), this.viewDir);
   }
   update(t) {
     const e = this.t;
-    let r, i;
-    e < 0 ? (r = 0.34 + 0.05 * Math.sin(this.time * 2.4), i = 0) : (r = v(e / 0.45), i = v((e - 2.45) / 0.95)), e >= 0 && e < 2.5 && (this.strikeTimer -= t, this.strikeTimer <= 0 && (this.strike(), this.strikeTimer = f(0.42, 0.66))), this.boltAge += t;
-    const s = 1 - M(this.boltAge / 0.16), o = 0.62 + 0.38 * Math.random(), n = s * o * (1 - i) * (e >= 0 ? 1 : 0);
-    for (const h of [this.mainBolt, this.branchA, this.branchB])
-      h.material.uniforms.uAlpha.value = n;
-    if (this.arcTimer -= t, this.arcTimer <= 0) {
-      this.arcTimer = 0.13;
-      for (const h of this.arcs)
-        e >= 0 && Math.random() < 0.55 && i < 0.9 ? this.buildArc(h) : (h.mesh.visible = !1, h.material.uniforms.uAlpha.value = 0);
-    }
-    this.flashPeak = Math.max(0, this.flashPeak - t * 5.5), this.flash.material.opacity = this.flashPeak * 0.65, this.groundFlash.material.opacity = this.flashPeak * 0.34, this.groundFlash.scale.setScalar(0.8 + this.flashPeak * 0.6), this.sparkMat.uniforms.uTime.value = this.time, this.sparkMat.uniforms.uGrow.value = r, this.sparkMat.uniforms.uContract.value = i, this.ringMat.uniforms.uTime.value = this.time, this.ringMat.uniforms.uGrow.value = r, this.ringMat.uniforms.uContract.value = i, this.ring.scale.setScalar(1 - i * 0.35);
+    let s, i;
+    e < 0 ? (s = 0.34 + 0.05 * Math.sin(this.time * 2.4), i = 0) : (s = v(e / 0.45), i = v((e - 2.45) / 0.95)), e >= 0 && e < 2.5 && (this.strikeTimer -= t, this.strikeTimer <= 0 && (this.strike(), this.strikeTimer = c(0.52, 0.8))), this.boltAge += t;
+    const o = 1 - v(this.boltAge / 0.3), r = 0.78 + 0.22 * Math.sin(this.time * 32), n = o * r * (1 - i) * (e >= 0 ? 1 : 0);
+    for (const u of [this.mainBolt, this.branchA, this.branchB])
+      u.material.uniforms.uAlpha.value = n;
+    this.mainGlow.material.uniforms.uAlpha.value = n * 0.28, this.arcTimer -= t, this.arcTimer <= 0 && (this.arcTimer = c(0.2, 0.3), this.arcs.forEach((u, h) => this.buildArc(u, h))), this.arcs.forEach((u, h) => {
+      const d = 0.72 + 0.28 * Math.sin(this.time * 17 + h * 2.1);
+      u.material.uniforms.uAlpha.value = s * (1 - i) * d, u.mesh.scale.setScalar(1 - i * 0.88);
+    }), this.flashPeak = Math.max(0, this.flashPeak - t * 5.5), this.flash.material.opacity = this.flashPeak * 0.65, this.groundFlash.material.opacity = this.flashPeak * 0.34, this.groundFlash.scale.setScalar(0.8 + this.flashPeak * 0.6), this.sparkMat.uniforms.uTime.value = this.time, this.sparkMat.uniforms.uGrow.value = s, this.sparkMat.uniforms.uContract.value = i, this.ringMat.uniforms.uTime.value = this.time, this.ringMat.uniforms.uGrow.value = s, this.ringMat.uniforms.uContract.value = i, this.ring.scale.setScalar(1 - i * 0.35);
   }
 }
-function V() {
-  const r = [], i = [], s = [], o = new a.Color(2914877), n = new a.Color(6473066), h = new a.Color(11135645);
-  for (let c = 0; c <= 14; c++) {
-    const l = c / 14, m = Math.sin(Math.PI * Math.pow(l, 0.68)) * 0.085 * (1 - 0.22 * l) + 12e-4, p = Math.sin(Math.PI * l) * 0.022, y = l * 0.28, b = o.clone().lerp(n, l).lerp(h, l * l).multiplyScalar(0.7), A = o.clone().lerp(n, l).lerp(h, l * l);
-    r.push(-m, y, p), i.push(b.r, b.g, b.b), r.push(0, y, p + 8e-3), i.push(A.r, A.g, A.b), r.push(m, y, p), i.push(b.r, b.g, b.b);
+function H() {
+  const s = [], i = [], o = [], r = new a.Color(2914877), n = new a.Color(6473066), u = new a.Color(11135645);
+  for (let d = 0; d <= 14; d++) {
+    const l = d / 14, m = Math.sin(Math.PI * Math.pow(l, 0.68)) * 0.085 * (1 - 0.22 * l) + 12e-4, p = Math.sin(Math.PI * l) * 0.022, y = l * 0.28, g = r.clone().lerp(n, l).lerp(u, l * l).multiplyScalar(0.7), M = r.clone().lerp(n, l).lerp(u, l * l);
+    s.push(-m, y, p), i.push(g.r, g.g, g.b), s.push(0, y, p + 8e-3), i.push(M.r, M.g, M.b), s.push(m, y, p), i.push(g.r, g.g, g.b);
   }
-  for (let c = 0; c < 14; c++) {
-    const l = c * 3, m = l + 3;
-    s.push(l, m, l + 1, l + 1, m, m + 1), s.push(l + 1, m + 1, l + 2, l + 2, m + 1, m + 2);
+  for (let d = 0; d < 14; d++) {
+    const l = d * 3, m = l + 3;
+    o.push(l, m, l + 1, l + 1, m, m + 1), o.push(l + 1, m + 1, l + 2, l + 2, m + 1, m + 2);
   }
-  const u = new a.BufferGeometry();
-  return u.setAttribute("position", new a.Float32BufferAttribute(r, 3)), u.setAttribute("color", new a.Float32BufferAttribute(i, 3)), u.setIndex(s), u.computeVertexNormals(), u;
+  const h = new a.BufferGeometry();
+  return h.setAttribute("position", new a.Float32BufferAttribute(s, 3)), h.setAttribute("color", new a.Float32BufferAttribute(i, 3)), h.setIndex(o), h.computeVertexNormals(), h;
 }
-class O extends S {
+class W extends S {
   constructor(t, e) {
     super(t, 4.1), this.count = Math.max(12, Math.round(38 * e)), this.dummy = new a.Object3D();
-    const r = V(), i = new a.MeshBasicMaterial({
+    const s = H(), i = new a.MeshBasicMaterial({
       vertexColors: !0,
       side: a.DoubleSide
     });
-    this.mesh = new a.InstancedMesh(r, i, this.count), this.mesh.frustumCulled = !1, this.group.add(this.mesh), this.leaves = [];
-    const s = [10477706, 7327866, 13168778, 5551466, 11065706];
-    for (let n = 0; n < this.count; n++)
+    this.mesh = new a.InstancedMesh(s, i, this.count), this.mesh.frustumCulled = !1, this.group.add(this.mesh), this.leaves = [];
+    const o = [10477706, 7327866, 13168778, 5551466, 11065706];
+    for (let n = 0; n < this.count; n++) {
+      const u = n % 11 === 1 || n % 17 === 4 ? c(1.65, 2.1) : n % 4 === 0 ? c(0.95, 1.3) : c(0.36, 0.72);
       this.leaves.push({
-        ang: n / this.count * w + f(-0.22, 0.22),
-        r: g * f(0.8, 1.38),
-        y: f(0.1, 0.78),
-        size: f(0.72, 1.55),
-        dir: Math.random() < 0.5 ? -1 : 1,
-        spinSpd: f(0.35, 0.95),
-        bobF: f(1.4, 2.8),
-        bobP: Math.random() * w,
-        flapF: f(2, 4.2),
-        flapP: Math.random() * w,
-        tilt: f(-0.5, 0.5),
-        spin: f(-1.2, 1.2)
-      }), this.mesh.setColorAt(n, new a.Color(s[n % s.length]).multiplyScalar(f(0.85, 1.12)));
+        ang: Math.random() * b,
+        r: w * c(0.65, 1.55),
+        y: c(0.06, 0.82),
+        size: u,
+        width: c(0.78, 1.28),
+        length: c(0.8, 1.22),
+        dir: Math.random() < 0.25 ? -1 : 1,
+        spinSpd: c(0.35, 0.95),
+        bobF: c(1.4, 2.8),
+        bobP: Math.random() * b,
+        flapF: c(2, 4.2),
+        flapP: Math.random() * b,
+        tilt: c(-1.4, 1.4),
+        heading: c(-Math.PI, Math.PI),
+        roll: c(-Math.PI, Math.PI),
+        spin: c(-0.9, 0.9)
+      }), this.mesh.setColorAt(n, new a.Color(o[n % o.length]).multiplyScalar(c(0.85, 1.12)));
+    }
     this.mesh.instanceColor.needsUpdate = !0;
-    const o = C([
+    const r = P([
       [0, "rgba(150,240,150,0.35)"],
       [0.5, "rgba(90,200,110,0.12)"],
       [1, "rgba(90,200,110,0)"]
@@ -517,7 +619,7 @@ class O extends S {
     this.groundGlow = new a.Mesh(
       new a.PlaneGeometry(1.8, 1.8),
       new a.MeshBasicMaterial({
-        map: o,
+        map: r,
         transparent: !0,
         blending: a.AdditiveBlending,
         depthWrite: !1,
@@ -526,61 +628,72 @@ class O extends S {
     ), this.groundGlow.rotation.x = -Math.PI / 2, this.groundGlow.position.y = 4e-3, this.group.add(this.groundGlow);
   }
   update() {
-    const t = this.t, e = 2.55, r = 1.45;
+    const t = this.t, e = 2.55, s = 1.45;
     let i;
     t < 0 ? i = 0.62 : i = 1;
-    for (let o = 0; o < this.count; o++) {
-      const n = this.leaves[o], h = o / this.count, u = t < 0 ? 0.62 : v((t - h * 0.3) / 0.45);
-      let c = 0;
-      t >= e && (c = M((t - e - h * 0.5 * r) / (0.5 * r)));
-      const l = T(c), m = n.r * (1 - l * 0.995), p = n.ang + this.time * n.spinSpd * n.dir * (1 + l * 4), y = Math.cos(p) * m, b = Math.sin(p) * m, A = Math.sin(this.time * n.bobF + n.bobP) * 0.055, F = (n.y + A) * (1 - l) + -0.14 * l, R = n.size * u * (1 - l * l) * i;
-      this.dummy.position.set(y, F, b), this.dummy.rotation.set(
+    for (let r = 0; r < this.count; r++) {
+      const n = this.leaves[r], u = r / this.count, h = t < 0 ? 0.62 : v((t - u * 0.3) / 0.45);
+      let d = 0;
+      t >= e && (d = x((t - e - u * 0.5 * s) / (0.5 * s)));
+      const l = R(d), m = n.r * (1 - l * 0.995), p = n.ang + this.time * n.spinSpd * n.dir * (1 + l * 4), y = Math.cos(p) * m, g = Math.sin(p) * m, M = Math.sin(this.time * n.bobF + n.bobP) * 0.055, F = (n.y + M) * (1 - l) + -0.14 * l, C = n.size * h * (1 - l * l) * i;
+      this.dummy.position.set(y, F, g), this.dummy.rotation.set(
         n.tilt + Math.sin(this.time * n.flapF + n.flapP) * 0.55 + l * 2.2,
-        p + Math.PI * 0.5 + this.time * n.spin * (1 + l * 2),
-        Math.sin(this.time * n.flapF * 0.7 + n.flapP) * 0.65
-      ), this.dummy.scale.setScalar(R), this.dummy.updateMatrix(), this.mesh.setMatrixAt(o, this.dummy.matrix);
+        p + n.heading + this.time * n.spin * (1 + l * 2),
+        n.roll + Math.sin(this.time * n.flapF * 0.7 + n.flapP) * 0.4
+      ), this.dummy.scale.set(C * n.width, C * n.length, C), this.dummy.updateMatrix(), this.mesh.setMatrixAt(r, this.dummy.matrix);
     }
     this.mesh.instanceMatrix.needsUpdate = !0;
-    const s = t < 0 ? 0.18 : v(t / 0.7) * (1 - v((t - e) / r));
-    this.groundGlow.material.opacity = 0.3 * s;
+    const o = t < 0 ? 0.18 : v(t / 0.7) * (1 - v((t - e) / s));
+    this.groundGlow.material.opacity = 0.3 * o;
   }
 }
-function D(d, t, e, r) {
-  const i = [], s = [], o = [];
-  for (let h = 0; h <= e; h++) {
-    const u = h / e, c = -1 * u * w + Math.PI * 0.5, l = Math.cos(c), m = Math.sin(c);
-    i.push(l * d, 0, m * d, l * t, 0, m * t), s.push(u, 0, u, 1);
+function N(f, t, e, s) {
+  const i = [], o = [], r = [];
+  for (let u = 0; u <= e; u++) {
+    const h = u / e, d = -1 * h * b + Math.PI * 0.5, l = Math.cos(d), m = Math.sin(d);
+    i.push(l * f, 0, m * f, l * t, 0, m * t), o.push(h, 0, h, 1);
   }
-  for (let h = 0; h < e; h++) {
-    const u = h * 2;
-    o.push(u, u + 2, u + 1, u + 1, u + 2, u + 3);
+  for (let u = 0; u < e; u++) {
+    const h = u * 2;
+    r.push(h, h + 2, h + 1, h + 1, h + 2, h + 3);
   }
   const n = new a.BufferGeometry();
-  return n.setAttribute("position", new a.Float32BufferAttribute(i, 3)), n.setAttribute("uv", new a.Float32BufferAttribute(s, 2)), n.setIndex(o), n;
+  return n.setAttribute("position", new a.Float32BufferAttribute(i, 3)), n.setAttribute("uv", new a.Float32BufferAttribute(o, 2)), n.setIndex(r), n;
 }
-class U extends S {
+class j extends S {
   constructor(t, e) {
-    super(t, 3.9), this.count = Math.max(24, Math.round(84 * e)), this.freezeDur = 1.65, this.holdEnd = 2.3, this.dummy = new a.Object3D();
-    const r = new a.OctahedronGeometry(1, 0);
-    r.scale(0.055, 0.155, 0.055);
-    const i = new a.MeshBasicMaterial({
-      color: 13168639,
+    super(t, 3.9), this.count = Math.max(16, Math.round(42 * e)), this.freezeDur = 1.65, this.holdEnd = 2.3, this.dummy = new a.Object3D();
+    const s = new a.OctahedronGeometry(1, 0);
+    s.scale(0.06, 0.155, 0.06);
+    const i = [], o = s.getAttribute("position");
+    for (let p = 0; p < o.count; p += 3) {
+      const y = 0.67 + p / 3 % 4 * 0.1;
+      for (let g = 0; g < 3; g++) i.push(y * 0.8, y * 0.93, y);
+    }
+    s.setAttribute("color", new a.Float32BufferAttribute(i, 3));
+    const r = new a.MeshBasicMaterial({
+      color: 14086911,
+      vertexColors: !0,
       transparent: !0,
-      opacity: 0.95
+      opacity: 0.96
     });
-    this.shards = new a.InstancedMesh(r, i, this.count), this.shards.frustumCulled = !1, this.group.add(this.shards), this.shardParams = [];
-    const s = [12446463, 10475775, 14874879, 8833518];
-    for (let l = 0; l < this.count; l++)
+    this.shards = new a.InstancedMesh(s, r, this.count), this.shards.frustumCulled = !1, this.group.add(this.shards), this.shardParams = [];
+    const n = [12446463, 10475775, 14874879, 8833518];
+    for (let p = 0; p < this.count; p++) {
+      const g = p % 11 === 1 || p % 17 === 4 ? c(2.1, 2.7) : p % 4 === 0 ? c(1, 1.5) : c(0.32, 0.72);
       this.shardParams.push({
-        rj: f(-0.05, 0.06),
-        y: f(0, 0.1),
-        sx: f(0.75, 1.45),
-        sy: f(0.65, 1.75),
-        sz: f(0.75, 1.45),
-        rx: f(-0.35, 0.35),
-        rz: f(-0.35, 0.35),
-        spin: f(-1.1, 1.1)
-      }), this.shards.setColorAt(l, new a.Color(s[l % s.length]));
+        rj: c(-0.08, 0.08),
+        angleJitter: c(-0.32, 0.32) * b / this.count,
+        y: c(0.01, 0.07),
+        sx: g * c(0.82, 1.28),
+        sy: g * c(0.7, 1.18),
+        sz: g * c(0.82, 1.28),
+        rx: c(-0.5, 0.5),
+        ry: c(-Math.PI, Math.PI),
+        rz: c(-0.5, 0.5),
+        spin: c(-1.1, 1.1)
+      }), this.shards.setColorAt(p, new a.Color(n[p % n.length]));
+    }
     this.shards.instanceColor.needsUpdate = !0, this.sweepMat = new a.ShaderMaterial({
       uniforms: {
         uFront: { value: 0 },
@@ -631,7 +744,7 @@ class U extends S {
       side: a.DoubleSide,
       blending: a.AdditiveBlending
     }), this.sweep = new a.Mesh(
-      D(g * 0.74, g * 1.26, 160),
+      N(w * 0.74, w * 1.26, 160),
       this.sweepMat
     ), this.sweep.position.y = 8e-3, this.group.add(this.sweep), this.frost = new a.Mesh(
       new a.PlaneGeometry(1.85, 1.85),
@@ -643,13 +756,13 @@ class U extends S {
         opacity: 0
       })
     ), this.frost.rotation.x = -Math.PI / 2, this.frost.position.y = 3e-3, this.group.add(this.frost);
-    const o = Math.round(900 * e), n = new a.BufferGeometry(), h = new Float32Array(o), u = new Float32Array(o), c = new Float32Array(o * 3);
-    for (let l = 0; l < o; l++)
-      h[l] = Math.floor(Math.random() * this.count) / this.count, u[l] = Math.random(), c[l * 3] = f(-0.09, 0.09), c[l * 3 + 1] = f(0, 0.22), c[l * 3 + 2] = f(-0.09, 0.09);
-    n.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(o * 3), 3)), n.setAttribute("aShard", new a.Float32BufferAttribute(h, 1)), n.setAttribute("aSeed", new a.Float32BufferAttribute(u, 1)), n.setAttribute("aOff", new a.Float32BufferAttribute(c, 3)), this.dustMat = new a.ShaderMaterial({
+    const u = Math.round(350 * e), h = new a.BufferGeometry(), d = new Float32Array(u), l = new Float32Array(u), m = new Float32Array(u * 3);
+    for (let p = 0; p < u; p++)
+      d[p] = Math.floor(Math.random() * this.count) / this.count, l[p] = Math.random(), m[p * 3] = c(-0.09, 0.09), m[p * 3 + 1] = c(0, 0.22), m[p * 3 + 2] = c(-0.09, 0.09);
+    h.setAttribute("position", new a.Float32BufferAttribute(new Float32Array(u * 3), 3)), h.setAttribute("aShard", new a.Float32BufferAttribute(d, 1)), h.setAttribute("aSeed", new a.Float32BufferAttribute(l, 1)), h.setAttribute("aOff", new a.Float32BufferAttribute(m, 3)), this.dustMat = new a.ShaderMaterial({
       uniforms: {
         uCrack: { value: 0 },
-        uRadius: { value: g },
+        uRadius: { value: w },
         uTime: { value: 0 },
         uPixelRatio: { value: 1 }
       },
@@ -708,69 +821,69 @@ class U extends S {
       transparent: !0,
       depthWrite: !1,
       blending: a.AdditiveBlending
-    }), this.dust = new a.Points(n, this.dustMat), this.dust.frustumCulled = !1, this.group.add(this.dust);
+    }), this.dust = new a.Points(h, this.dustMat), this.dust.frustumCulled = !1, this.group.add(this.dust);
   }
   onResize(t) {
     this.dustMat.uniforms.uPixelRatio.value = t;
   }
   update() {
     const t = this.t;
-    let e, r;
-    t < 0 ? (e = 0.22 + 0.04 * Math.sin(this.time * 1.6), r = 0) : (e = v(t / this.freezeDur), r = v((t - this.holdEnd) / 1.25) * 1.14);
-    for (let s = 0; s < this.count; s++) {
-      const o = s / this.count, n = Math.PI * 0.5 - o * w, h = this.shardParams[s], u = M((e - o) / 0.045), c = v((r - o) / 0.12), l = 1 + 0.42 * Math.sin(M((e - o) / 0.14) * Math.PI), m = 0.88 + 0.12 * Math.sin(this.time * 3.1 + s), p = u * (1 - c) * l * m;
+    let e, s;
+    t < 0 ? (e = 0.22 + 0.04 * Math.sin(this.time * 1.6), s = 0) : (e = v(t / this.freezeDur), s = v((t - this.holdEnd) / 1.25) * 1.14);
+    for (let o = 0; o < this.count; o++) {
+      const r = o / this.count, n = this.shardParams[o], u = Math.PI * 0.5 - r * b + n.angleJitter, h = x((e - r) / 0.045), d = v((s - r) / 0.12), l = 1 + 0.42 * Math.sin(x((e - r) / 0.14) * Math.PI), m = 0.88 + 0.12 * Math.sin(this.time * 3.1 + o), p = h * (1 - d) * l * m;
       this.dummy.position.set(
-        Math.cos(n) * (g + h.rj) * (1 - c * 0.8),
-        (0.02 + h.y * u) * (1 - c) - c * 0.12,
-        Math.sin(n) * (g + h.rj) * (1 - c * 0.8)
+        Math.cos(u) * (w + n.rj) * (1 - d * 0.8),
+        (0.02 + n.y * h) * (1 - d) - d * 0.12,
+        Math.sin(u) * (w + n.rj) * (1 - d * 0.8)
       ), this.dummy.rotation.set(
-        h.rx + this.time * h.spin * 0.35,
-        -n + this.time * h.spin,
-        h.rz
-      ), this.dummy.scale.set(h.sx * p, h.sy * p, h.sz * p), this.dummy.updateMatrix(), this.shards.setMatrixAt(s, this.dummy.matrix);
+        n.rx + d * n.spin * 1.4,
+        -u + n.ry + d * n.spin * 2,
+        n.rz + d * n.spin
+      ), this.dummy.scale.set(n.sx * p, n.sy * p, n.sz * p), this.dummy.updateMatrix(), this.shards.setMatrixAt(o, this.dummy.matrix);
     }
-    this.shards.instanceMatrix.needsUpdate = !0, this.sweepMat.uniforms.uFront.value = e, this.sweepMat.uniforms.uCrack.value = r, this.sweepMat.uniforms.uTime.value = this.time, this.sweepMat.uniforms.uOpacity.value = 1 - v(r * 1.15);
-    const i = t < 0 ? 0.1 : v(e) * (1 - v(r));
-    this.frost.material.opacity = 0.55 * i, this.frost.scale.setScalar(0.9 + 0.25 * e), this.dustMat.uniforms.uCrack.value = r, this.dustMat.uniforms.uTime.value = this.time;
+    this.shards.instanceMatrix.needsUpdate = !0, this.sweepMat.uniforms.uFront.value = e, this.sweepMat.uniforms.uCrack.value = s, this.sweepMat.uniforms.uTime.value = this.time, this.sweepMat.uniforms.uOpacity.value = 1 - v(s * 1.15);
+    const i = t < 0 ? 0.1 : v(e) * (1 - v(s));
+    this.frost.material.opacity = 0.55 * i, this.frost.scale.setScalar(0.9 + 0.25 * e), this.dustMat.uniforms.uCrack.value = s, this.dustMat.uniforms.uTime.value = this.time;
   }
 }
-const W = { low: 0.35, medium: 0.65, high: 1 }, N = {
-  fire: (d, t) => new E(d, t),
-  thunder: (d, t) => new _(d, t),
-  grass: (d, t) => new O(d, t),
-  ice: (d, t) => new U(d, t)
+const L = { low: 0.35, medium: 0.65, high: 1 }, q = {
+  fire: (f, t) => new V(f, t),
+  thunder: (f, t) => new D(f, t),
+  grass: (f, t) => new W(f, t),
+  ice: (f, t) => new j(f, t)
 };
-class H {
+class X {
   constructor(t, e = {}) {
-    if (this.pools = /* @__PURE__ */ new Map(), this.playing = /* @__PURE__ */ new Map(), this.disposed = !1, this.parent = t, this.density = W[e.quality ?? "high"], !this.density) throw new Error("Unknown effect quality");
+    if (this.pools = /* @__PURE__ */ new Map(), this.playing = /* @__PURE__ */ new Map(), this.disposed = !1, this.parent = t, this.density = L[e.quality ?? "high"], !this.density) throw new Error("Unknown effect quality");
     this.pixelRatio = this.validatePixelRatio(e.pixelRatio ?? 1), this.camera = e.camera;
   }
   play(t, e = {}) {
     this.assertAlive();
-    const r = N[t];
-    if (!r) throw new Error(`Unknown pocket effect: ${String(t)}`);
-    const i = e.radius ?? g;
+    const s = q[t];
+    if (!s) throw new Error(`Unknown pocket effect: ${String(t)}`);
+    const i = e.radius ?? w;
     if (!Number.isFinite(i) || i <= 0) throw new Error("radius must be a positive finite number");
     if (e.duration !== void 0 && (!Number.isFinite(e.duration) || e.duration <= 0))
       throw new Error("duration must be a positive finite number");
     if (e.rotation !== void 0 && !Number.isFinite(e.rotation)) throw new Error("rotation must be finite");
     if (e.position && ![e.position.x, e.position.y, e.position.z].every(Number.isFinite))
       throw new Error("position must contain finite x, y and z values");
-    let s = this.pools.get(t);
-    s || (s = [], this.pools.set(t, s));
-    let o = s.find((c) => !this.playing.has(c));
-    o || (o = r(this.parent, this.density), o.onResize(this.pixelRatio), s.push(o));
+    let o = this.pools.get(t);
+    o || (o = [], this.pools.set(t, o));
+    let r = o.find((d) => !this.playing.has(d));
+    r || (r = s(this.parent, this.density), r.onResize(this.pixelRatio), o.push(r));
     const n = e.position ?? { x: 0, y: 0, z: 0 };
-    o.group.position.set(n.x, n.y, n.z), o.group.rotation.set(0, e.rotation ?? 0, 0), o.group.scale.setScalar(i / g), o.onCamera(this.camera);
-    const h = { effect: o, speed: o.duration / (e.duration ?? o.duration), onComplete: e.onComplete };
-    this.playing.set(o, h), o.play();
-    const u = this;
+    r.group.position.set(n.x, n.y, n.z), r.group.rotation.set(0, e.rotation ?? 0, 0), r.group.scale.setScalar(i / w), r.onCamera(this.camera);
+    const u = { effect: r, speed: r.duration / (e.duration ?? r.duration), onComplete: e.onComplete };
+    this.playing.set(r, u), r.play();
+    const h = this;
     return {
       stop() {
-        u.playing.get(h.effect) === h && (u.playing.delete(h.effect), h.effect.stop());
+        h.playing.get(u.effect) === u && (h.playing.delete(u.effect), u.effect.stop());
       },
       get active() {
-        return u.playing.get(h.effect) === h;
+        return h.playing.get(u.effect) === u;
       }
     };
   }
@@ -778,9 +891,9 @@ class H {
   update(t) {
     if (this.assertAlive(), !Number.isFinite(t) || t < 0) throw new Error("deltaSeconds must be a non-negative finite number");
     const e = [];
-    for (const [r, i] of Array.from(this.playing.entries()))
-      this.playing.get(r) === i && (r.onCamera(this.camera), r.tick(t * i.speed) && (this.playing.delete(r), i.onComplete && e.push(i.onComplete)));
-    e.forEach((r) => r());
+    for (const [s, i] of Array.from(this.playing.entries()))
+      this.playing.get(s) === i && (s.onCamera(this.camera), s.tick(t * i.speed) && (this.playing.delete(s), i.onComplete && e.push(i.onComplete)));
+    e.forEach((s) => s());
   }
   setCamera(t) {
     this.assertAlive(), this.camera = t;
@@ -788,27 +901,27 @@ class H {
   /** Call when your renderer's pixel ratio changes. */
   setPixelRatio(t) {
     this.assertAlive(), this.pixelRatio = this.validatePixelRatio(t);
-    for (const e of this.pools.values()) for (const r of e) r.onResize(this.pixelRatio);
+    for (const e of this.pools.values()) for (const s of e) s.onResize(this.pixelRatio);
   }
   /** Stop all effects, detach them, and free owned geometry, materials and textures. */
   dispose() {
     if (this.disposed) return;
     this.disposed = !0, this.playing.clear();
-    const t = /* @__PURE__ */ new Set(), e = /* @__PURE__ */ new Set(), r = /* @__PURE__ */ new Set();
-    for (const i of this.pools.values()) for (const s of i)
-      s.stop(), s.group.traverse((o) => {
-        const n = o;
-        if (n.geometry && !o.isSprite && t.add(n.geometry), n.material) {
-          const h = Array.isArray(n.material) ? n.material : [n.material];
-          for (const u of h) {
-            e.add(u);
-            for (const c of Object.values(u)) c instanceof a.Texture && r.add(c);
-            if (u instanceof a.ShaderMaterial)
-              for (const c of Object.values(u.uniforms)) c.value instanceof a.Texture && r.add(c.value);
+    const t = /* @__PURE__ */ new Set(), e = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
+    for (const i of this.pools.values()) for (const o of i)
+      o.stop(), o.group.traverse((r) => {
+        const n = r;
+        if (n.geometry && !r.isSprite && t.add(n.geometry), n.material) {
+          const u = Array.isArray(n.material) ? n.material : [n.material];
+          for (const h of u) {
+            e.add(h);
+            for (const d of Object.values(h)) d instanceof a.Texture && s.add(d);
+            if (h instanceof a.ShaderMaterial)
+              for (const d of Object.values(h.uniforms)) d.value instanceof a.Texture && s.add(d.value);
           }
         }
-      }), s.group.removeFromParent();
-    t.forEach((i) => i.dispose()), e.forEach((i) => i.dispose()), r.forEach((i) => i.dispose()), this.pools.clear();
+      }), o.group.removeFromParent();
+    t.forEach((i) => i.dispose()), e.forEach((i) => i.dispose()), s.forEach((i) => i.dispose()), this.pools.clear();
   }
   validatePixelRatio(t) {
     if (!Number.isFinite(t) || t <= 0) throw new Error("pixelRatio must be a positive finite number");
@@ -819,5 +932,5 @@ class H {
   }
 }
 export {
-  H as PocketEffects
+  X as PocketEffects
 };
