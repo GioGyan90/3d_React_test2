@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#080b11" />
+  <meta name="description" content="可供 Three.js 游戏调用的四元素台球进球特效。" />
+  <title>Elemental Pocket · 四元素进球特效</title>
+  <script type="module" crossorigin src="./assets/index-C-GDvQWu.js"></script>
+  <link rel="stylesheet" crossorigin href="./assets/index-DN7bYaGd.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a href="#top" class="brand" aria-label="Elemental Pocket 首页"><span class="brand-mark"><i></i></span><span>ELEMENTAL <em>/</em> POCKET</span></a>
+      <span class="topnote"><i></i> REAL-TIME FX LAB</span>
+    </header>
+
+    <main id="top">
+      <section class="intro">
+        <div class="intro-copy">
+          <p class="eyebrow"><span>01 — 04</span> &nbsp; INTERACTIVE SHOWCASE</p>
+          <h1>让每次进球，<br><span>都值得回味。</span></h1>
+          <p class="intro-text">四种元素，一瞬间的能量释放。为游戏场景打造的实时 3D 进球特效。</p>
+        </div>
+        <div class="intro-side"><span class="intro-index">4</span><span>ELEMENTS<br><b>ONE PERFECT SHOT</b></span></div>
+      </section>
+
+      <section class="library" aria-labelledby="library-title">
+        <div class="section-head">
+          <div><p class="eyebrow">THE COLLECTION</p><h2 id="library-title">选择一种能量 <span>↘</span></h2></div>
+          <div class="toolbar">
+            <label class="quality-label" for="quality">画质</label>
+            <select id="quality" aria-label="特效画质"><option value="low">流畅</option><option value="medium">均衡</option><option value="high" selected>精细</option></select>
+            <button type="button" id="loop" class="button button-quiet" aria-pressed="true">循环播放 <span>ON</span></button>
+            <button type="button" id="play-all" class="button button-primary"><span aria-hidden="true">▶</span> 播放全部</button>
+          </div>
+        </div>
+
+        <div class="showcase" id="showcase">
+          <canvas id="canvas" aria-label="四元素三维特效预览"></canvas>
+          <div class="grid">
+            <article class="card fire" data-effect="fire">
+              <div class="card-head"><span class="card-number">01 / FIRE</span><span class="card-status"><i></i> IGNITION</span></div>
+              <div class="visual"><div class="visual-hint">LIVE PREVIEW</div></div>
+              <div class="card-bottom"><div><h3>烈焰 <span>Fire</span></h3><p>火舌环绕 · 能量收束</p></div><button type="button" class="replay" aria-label="播放烈焰特效"><span aria-hidden="true">↗</span></button></div>
+            </article>
+            <article class="card thunder" data-effect="thunder">
+              <div class="card-head"><span class="card-number">02 / THUNDER</span><span class="card-status"><i></i> CHARGED</span></div>
+              <div class="visual"><div class="visual-hint">LIVE PREVIEW</div></div>
+              <div class="card-bottom"><div><h3>雷霆 <span>Thunder</span></h3><p>落雷击中 · 电弧汇聚</p></div><button type="button" class="replay" aria-label="播放雷霆特效"><span aria-hidden="true">↗</span></button></div>
+            </article>
+            <article class="card grass" data-effect="grass">
+              <div class="card-head"><span class="card-number">03 / NATURE</span><span class="card-status"><i></i> IN MOTION</span></div>
+              <div class="visual"><div class="visual-hint">LIVE PREVIEW</div></div>
+              <div class="card-bottom"><div><h3>森息 <span>Nature</span></h3><p>落叶旋舞 · 漩涡归拢</p></div><button type="button" class="replay" aria-label="播放森息特效"><span aria-hidden="true">↗</span></button></div>
+            </article>
+            <article class="card ice" data-effect="ice">
+              <div class="card-head"><span class="card-number">04 / ICE</span><span class="card-status"><i></i> FROZEN</span></div>
+              <div class="visual"><div class="visual-hint">LIVE PREVIEW</div></div>
+              <div class="card-bottom"><div><h3>冰晶 <span>Ice</span></h3><p>顺时结霜 · 碎晶入洞</p></div><button type="button" class="replay" aria-label="播放冰晶特效"><span aria-hidden="true">↗</span></button></div>
+            </article>
+          </div>
+        </div>
+        <div class="below"><span><i></i> 点击卡片右下角可单独播放</span><span>WEBGL · THREE.JS · TYPESCRIPT</span></div>
+      </section>
+      <section class="integration"><div><p class="eyebrow">BUILT FOR PLAY</p><h2>为游戏而生。</h2><p>可调整元素、位置、半径和时长，并接入现有的 Three.js 渲染循环。</p></div><a href="https://github.com/GioGyan90/3d_React_test2/tree/main/elemental-pocket" target="_blank" rel="noreferrer" class="source-link">查看项目与接入说明 <span>↗</span></a></section>
+    </main>
+    <footer><span>ELEMENTAL / POCKET</span><span>AN INTERACTIVE FX STUDY</span></footer>
+  </div>
+  <div id="error" role="alert" hidden></div>
+</body>
+</html>
