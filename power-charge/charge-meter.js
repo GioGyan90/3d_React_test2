@@ -193,7 +193,8 @@ export class PowerChargeMeter {
     this.pointerId = e.pointerId;
     this.dragStartY = e.clientY;
     this.dragStartValue = this.progress;
-    this.surface.focus({ preventScroll: true });
+    // Pointer input should not produce a rectangular focus outline around the canvas.
+    // The slider remains keyboard-focusable via Tab and its arrow-key controls.
     this.surface.setPointerCapture(e.pointerId);
     this.changePhase('charging');
   }
