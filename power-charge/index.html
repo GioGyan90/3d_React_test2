@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080b11">
+  <meta name="description" content="Lucky Break · 倒梯形力量蓄力槽交互特效。向下拖动、满槽震动三秒、内部爆炸与自动复位。">
+  <title>Power Charge · 力量蓄力特效</title>
+  <link rel="stylesheet" href="./style.css">
+  <script type="module" src="./charge-meter.js"></script>
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="Power Charge 首页"><span class="brand-mark"><i></i></span>LUCKY BREAK <em>/</em> POWER CHARGE</a>
+      <nav class="nav">
+        <span class="live-dot" aria-hidden="true"></span><span class="topnote">INTERACTIVE FX LAB</span>
+        <a class="nav-link" href="../elemental-pocket/">四元素进球特效 <span aria-hidden="true">↗</span></a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="intro-main">
+          <p class="eyebrow"><span>05 / POWER SYSTEM</span> &nbsp; · &nbsp; INTERACTIVE PROTOTYPE</p>
+          <h1>释放这一击的<br><span>全部力量。</span></h1>
+          <p class="intro-text">从顶部下拉，将能量灌入倒梯形槽。蓄满后维持三秒极限震动，触发一次限定在槽体内部的能量爆裂。</p>
+        </div>
+        <div class="intro-number" aria-hidden="true">05<span> / FX</span></div>
+      </section>
+
+      <section class="workspace" aria-label="力量槽交互体验">
+        <div class="console">
+          <div class="panel-header"><span>01 &nbsp;/&nbsp; POWER CONTROLLER</span><span class="device-tag"><i></i> SYSTEM ACTIVE</span></div>
+          <div class="console-main">
+            <p class="section-label">CURRENT OUTPUT</p>
+            <div class="readout"><strong id="percent">000</strong><span>%</span></div>
+            <div class="readout-sub"><span id="status">等待蓄力</span><span id="stage-code">STANDBY</span></div>
+            <div class="hairline"></div>
+            <div class="overdrive-heading">
+              <div><p class="section-label">OVERDRIVE / 极限维持</p><p class="hold-title" id="hold-label">满槽后自动倒计时</p></div>
+              <span class="countdown" id="countdown">3.0<span>S</span></span>
+            </div>
+            <div class="time-track" aria-label="满槽三秒倒计时"><div id="time-progress"></div></div>
+            <div class="phase-list" aria-label="特效阶段">
+              <div class="phase active" data-phase="charge"><span class="phase-id">01</span><span class="phase-text">蓄力 <small>CHARGE</small></span><span class="phase-mark"></span></div>
+              <div class="phase" data-phase="hold"><span class="phase-id">02</span><span class="phase-text">临界震动 <small>OVERDRIVE · 3 SEC</small></span><span class="phase-mark"></span></div>
+              <div class="phase" data-phase="burst"><span class="phase-id">03</span><span class="phase-text">能量爆炸 <small>DETONATION</small></span><span class="phase-mark"></span></div>
+              <div class="phase" data-phase="clear"><span class="phase-id">04</span><span class="phase-text">归零复位 <small>RESET</small></span><span class="phase-mark"></span></div>
+            </div>
+          </div>
+          <div class="console-controls">
+            <button class="button button-primary" id="auto-demo" type="button"><span aria-hidden="true">▶</span> 自动演示</button>
+            <button class="button button-quiet" id="reset" type="button"><span aria-hidden="true">↺</span> 重置</button>
+          </div>
+          <p class="console-footnote">支持鼠标、触屏拖动，以及方向键调整蓄力。自动演示会完整播放一次。</p>
+        </div>
+
+        <div class="visual-panel">
+          <div class="panel-header"><span>02 &nbsp;/&nbsp; LIVE ENERGY CORE</span><span class="visual-status"><span></span> REAL-TIME RENDER</span></div>
+          <div class="visual-body">
+            <div class="ambient-orb orb-a" aria-hidden="true"></div><div class="ambient-orb orb-b" aria-hidden="true"></div>
+            <div class="target target-one" aria-hidden="true"></div><div class="target target-two" aria-hidden="true"></div>
+            <div class="axis-label axis-top">INPUT / 0%</div><div class="axis-label axis-bottom">OUTPUT / 100%</div>
+            <div class="vertical-rail rail-left" aria-hidden="true"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+            <div class="energy-slot" id="energy-slot" role="slider" tabindex="0" aria-label="力量槽，从上向下拖动蓄力" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-valuetext="0% 待蓄力">
+              <canvas id="energy-canvas" aria-hidden="true"></canvas>
+              <div class="drag-hint" id="drag-hint" aria-hidden="true"><span>▼</span><small>DRAG DOWN</small></div>
+            </div>
+            <div class="slot-caption"><span class="slot-caption-line"></span><span id="visual-instruction">向下拖动 · 注入能量</span><span class="slot-caption-line"></span></div>
+          </div>
+          <div class="visual-bottom"><span><i></i> ENERGY CONTAINMENT FIELD</span><span>60 FPS TARGET · CANVAS 2D</span></div>
+        </div>
+      </section>
+
+      <section class="integration">
+        <div><p class="eyebrow">BUILT FOR INTERACTION</p><h2>独立页面，也能接入游戏。</h2><p>蓄力、三秒临界震动、爆炸和复位分别管理；不依赖外部图片、CDN 或额外框架。</p></div>
+        <a class="source-link" href="https://github.com/GioGyan90/3d_React_test2/tree/main/power-charge" target="_blank" rel="noopener noreferrer">查看源码 <span aria-hidden="true">↗</span></a>
+      </section>
+    </main>
+    <footer><span>LUCKY BREAK / POWER CHARGE</span><span>AN INTERACTIVE FX STUDY</span></footer>
+  </div>
+  <div class="screenreader-only" aria-live="polite" id="live-status"></div>
+</body>
+</html>
