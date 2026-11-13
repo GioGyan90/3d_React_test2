@@ -193,17 +193,25 @@ export class PowerChargeMeter {
     this.pointerId = e.pointerId;
     this.dragStartY = e.clientY;
     this.dragStartValue = this.progress;
+    // Use the top of the lowest red cell as the physical end of the gesture.
+    // Starting a drag in that cell is an immediate 100% charge.
+    const bounds = this.surface.getBoundingClientRect();
+    this.dragFinishY = bounds.top + bounds.height * segmentBounds(SEGMENTS - 1).y1 / H;
     // Pointer input should not produce a rectangular focus outline around the canvas.
     // The slider remains keyboard-focusable via Tab and its arrow-key controls.
     this.surface.setPointerCapture(e.pointerId);
     this.changePhase('charging');
+    if (e.clientY >= this.dragFinishY) this.setCharge(1);
   }
 
   pointerMove(e) {
     if (!this.dragging || this.pointerId !== e.pointerId) return;
     e.preventDefault();
-    const travel = this.surface.getBoundingClientRect().height || 1;
-    this.setCharge(this.dragStartValue + (e.clientY - this.dragStartY) / travel);
+    // Reaching any point in the lowest (red) segment completes the charge.
+    // This removes the need to drag past the segment to the canvas bottom.
+    const travel = Math.max(1, this.dragFinishY - this.dragStartY);
+    const fraction = (e.clientY - this.dragStartY) / travel;
+    this.setCharge(this.dragStartValue + (1 - this.dragStartValue) * fraction);
   }
 
   pointerUp(e) {
