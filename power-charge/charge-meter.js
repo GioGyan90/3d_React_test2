@@ -16,10 +16,18 @@
  *   meter.destroy();
  */
 const W = 320;
-const H = 520;
-const TOP = 26;
-const BOTTOM = 494;
+const H = 680;
+const TOP = 24;
+const BOTTOM = 656;
 const SPAN = BOTTOM - TOP;
+const SEGMENTS = 10;
+const SEGMENT_GAP = 9;
+const SEGMENT_HEIGHT = SPAN / SEGMENTS;
+// Always-visible cool-to-warm palette. Each cell has its own gap and frame.
+const SEGMENT_COLORS = [
+  '#77f8e6', '#53e0f0', '#37bbeb', '#488ee0', '#687bcd',
+  '#a276bb', '#cc8b9f', '#e5a47b', '#f69155', '#fa6147',
+];
 const HOLD_MS = 3000;
 const BURST_MS = 1200;
 const RESET_MS = 480;
@@ -29,13 +37,29 @@ const smooth = (t) => { const x = clamp(t); return x * x * (3 - 2 * x); };
 const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const random = (a, b) => a + Math.random() * (b - a);
 
-function trapezoid(ctx) {
-  ctx.beginPath();
-  ctx.moveTo(116, TOP);
-  ctx.lineTo(204, TOP);
-  ctx.lineTo(294, BOTTOM);
-  ctx.lineTo(26, BOTTOM);
+function halfWidthAt(y) {
+  return 34 + 61 * clamp((y - TOP) / SPAN);
+}
+
+function segmentBounds(i) {
+  const y1 = TOP + i * SEGMENT_HEIGHT + (i === 0 ? 0 : SEGMENT_GAP / 2);
+  const y2 = TOP + (i + 1) * SEGMENT_HEIGHT - (i === SEGMENTS - 1 ? 0 : SEGMENT_GAP / 2);
+  return { y1, y2, left1: W / 2 - halfWidthAt(y1), right1: W / 2 + halfWidthAt(y1),
+    left2: W / 2 - halfWidthAt(y2), right2: W / 2 + halfWidthAt(y2) };
+}
+
+function addSegmentPath(ctx, i) {
+  const { y1, y2, left1, right1, left2, right2 } = segmentBounds(i);
+  ctx.moveTo(left1, y1);
+  ctx.lineTo(right1, y1);
+  ctx.lineTo(right2, y2);
+  ctx.lineTo(left2, y2);
   ctx.closePath();
+}
+
+function segmentedPath(ctx) {
+  ctx.beginPath();
+  for (let i = 0; i < SEGMENTS; i++) addSegmentPath(ctx, i);
 }
 
 function makeParticles(count) {
@@ -270,34 +294,31 @@ export class PowerChargeMeter {
     ctx.clearRect(0, 0, W, H);
     const time = this.clock / 1000;
 
-    // Background recess and interior geometry.
+    // Ten disjoint trapezoid cells form a single clipping mask.
+    // This also keeps the explosion *inside* the cells and off their gaps.
     ctx.save();
-    trapezoid(ctx);
+    segmentedPath(ctx);
     ctx.shadowColor = '#00eadc';
-    ctx.shadowBlur = 13;
-    ctx.fillStyle = '#142831';
+    ctx.shadowBlur = 8;
+    ctx.fillStyle = '#111c25';
     ctx.fill();
     ctx.shadowBlur = 0;
     ctx.clip();
 
-    const darkness = ctx.createLinearGradient(0, TOP, 0, BOTTOM);
-    darkness.addColorStop(0, '#0b1b23');
-    darkness.addColorStop(0.5, '#13262f');
-    darkness.addColorStop(1, '#101620');
-    ctx.fillStyle = darkness;
-    ctx.fillRect(0, TOP, W, SPAN);
-
-    // Faint etched technical lines always visible below the charge front.
-    ctx.strokeStyle = 'rgba(146,211,212,.07)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 18; i++) {
-      const y = TOP + i * SPAN / 18;
+    // Even at zero power, the ten colored levels are visible in a muted state.
+    // Charging simply lights the same cool-to-warm cells at higher intensity.
+    for (let i = 0; i < SEGMENTS; i++) {
+      const { y1, y2 } = segmentBounds(i);
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
-    }
-    for (let i = -3; i <= 3; i++) {
-      const x = W / 2 + i * 34;
-      ctx.beginPath(); ctx.moveTo(x, TOP); ctx.lineTo(x, BOTTOM); ctx.stroke();
+      addSegmentPath(ctx, i);
+      const idle = ctx.createLinearGradient(0, y1, 0, y2);
+      idle.addColorStop(0, SEGMENT_COLORS[i]);
+      idle.addColorStop(1, '#12202a');
+      ctx.fillStyle = idle;
+      ctx.globalAlpha = .36;
+      ctx.fill();
+      ctx.restore();
     }
 
     if (this.progress > 0) this.paintCharge(ctx, time);
@@ -309,37 +330,30 @@ export class PowerChargeMeter {
     }
     ctx.restore();
 
-    // The beveled glass frame is painted on top of the clipped energy.
+    // Independent faceted outlines emphasize the ten distinct cells.
+    // No continuous outside rim: the small dark gaps must remain obvious.
     ctx.save();
-    trapezoid(ctx);
-    const rim = ctx.createLinearGradient(0, TOP, 0, BOTTOM);
-    rim.addColorStop(0, '#b7fff5');
-    rim.addColorStop(0.40, '#61bdc4');
-    rim.addColorStop(0.75, '#79a6b9');
-    rim.addColorStop(1, this.locked ? '#ffca8c' : '#8bb8bd');
-    ctx.lineWidth = 4;
-    ctx.shadowColor = this.locked ? '#ff9567' : '#51c7c7';
-    ctx.shadowBlur = this.locked ? 22 : 12;
-    ctx.strokeStyle = rim;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.lineWidth = 1;
-    ctx.strokeStyle = 'rgba(255,255,255,.46)';
-    ctx.stroke();
-    ctx.restore();
-
-    // Inset corners and cap bolts.
-    for (const [x,y] of [[116,TOP],[204,TOP],[26,BOTTOM],[294,BOTTOM]]) {
+    for (let i = 0; i < SEGMENTS; i++) {
+      const isLit = this.progress > i / SEGMENTS;
+      const isHot = this.phase === 'hold' || this.phase === 'burst';
       ctx.beginPath();
-      ctx.arc(x,y,2.5,0,TAU);
-      ctx.fillStyle = '#e2fff7';
-      ctx.fill();
+      addSegmentPath(ctx, i);
+      ctx.lineWidth = isLit ? 2.8 : 1.8;
+      ctx.strokeStyle = isHot ? '#ffcf99' : isLit ? SEGMENT_COLORS[i] : 'rgba(148,196,202,.57)';
+      ctx.shadowColor = isHot ? '#ff905c' : SEGMENT_COLORS[i];
+      ctx.shadowBlur = isHot ? 18 : isLit ? 9 : 3;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+      ctx.strokeStyle = isLit ? 'rgba(255,255,255,.35)' : 'rgba(228,248,255,.09)';
+      ctx.lineWidth = .8;
+      ctx.stroke();
     }
+    ctx.restore();
   }
 
   paintCharge(ctx, time) {
     const front = TOP + SPAN * this.progress;
-    const halfWidth = 44 + 90 * this.progress;
+    const halfWidth = halfWidthAt(front);
     ctx.save();
     ctx.beginPath();
     ctx.rect(0, TOP, W, front - TOP);
@@ -347,12 +361,11 @@ export class PowerChargeMeter {
 
     // Layered gradient: cool entry energy heats to amber and incandescent orange.
     const energy = ctx.createLinearGradient(0, TOP, 0, BOTTOM);
-    energy.addColorStop(0, '#72f7ea');
-    energy.addColorStop(0.24, '#39d6e8');
-    energy.addColorStop(0.49, '#418db9');
-    energy.addColorStop(0.70, '#f3c676');
-    energy.addColorStop(0.90, '#ff823e');
-    energy.addColorStop(1, '#ff462d');
+    energy.addColorStop(0, SEGMENT_COLORS[0]);
+    for (let i = 0; i < SEGMENTS; i++) {
+      energy.addColorStop((i + .5) / SEGMENTS, SEGMENT_COLORS[i]);
+    }
+    energy.addColorStop(1, SEGMENT_COLORS[SEGMENTS - 1]);
     ctx.fillStyle = energy;
     ctx.globalAlpha = 0.83 + 0.07 * Math.sin(time * 9);
     ctx.fillRect(0, TOP, W, SPAN);
@@ -405,7 +418,7 @@ export class PowerChargeMeter {
     const pulse = 0.5 + 0.5 * Math.sin(time * 32);
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
-    const bright = ctx.createRadialGradient(160, 320, 5, 160, 320, 210);
+    const bright = ctx.createRadialGradient(160, 401, 5, 160, 401, 260);
     bright.addColorStop(0, 'rgba(255,255,232,' + (0.26 + pulse * 0.46) + ')');
     bright.addColorStop(.5, 'rgba(255,161,59,' + (0.16 + pulse * .24) + ')');
     bright.addColorStop(1, 'rgba(255,71,23,0)');
@@ -437,7 +450,7 @@ export class PowerChargeMeter {
 
   paintBurst(ctx) {
     const t = clamp(this.burstElapsed / BURST_MS);
-    const cx = 160, cy = 326;
+    const cx = 160, cy = 401;
     const fade = 1 - smooth((t - 0.27) / 0.73);
     ctx.save();
     ctx.globalCompositeOperation = 'screen';
@@ -446,7 +459,7 @@ export class PowerChargeMeter {
     const flash = Math.pow(1 - t, 8);
     ctx.fillStyle = 'rgba(255,255,255,' + (flash * 0.82) + ')';
     ctx.fillRect(0, TOP, W, SPAN);
-    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 230 * easeOut(t) + 3);
+    const core = ctx.createRadialGradient(cx, cy, 0, cx, cy, 280 * easeOut(t) + 3);
     core.addColorStop(0, 'rgba(255,255,239,' + fade + ')');
     core.addColorStop(.20, 'rgba(255,219,115,' + fade * .88 + ')');
     core.addColorStop(.48, 'rgba(255,93,38,' + fade * .72 + ')');
