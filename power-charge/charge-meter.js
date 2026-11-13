@@ -28,8 +28,8 @@ const SEGMENT_COLORS = [
   '#77f8e6', '#53e0f0', '#37bbeb', '#488ee0', '#687bcd',
   '#a276bb', '#cc8b9f', '#e5a47b', '#f69155', '#fa6147',
 ];
-const HOLD_MS = 3000;
-const BURST_MS = 1200;
+const HOLD_MS = 1500;
+const BURST_MS = 1450;
 const RESET_MS = 480;
 const TAU = Math.PI * 2;
 const clamp = (x, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, x));
@@ -38,7 +38,7 @@ const easeOut = (t) => 1 - Math.pow(1 - clamp(t), 3);
 const random = (a, b) => a + Math.random() * (b - a);
 
 function halfWidthAt(y) {
-  return 34 + 61 * clamp((y - TOP) / SPAN);
+  return 22.5 + 27.5 * clamp((y - TOP) / SPAN);
 }
 
 function segmentBounds(i) {
@@ -65,9 +65,9 @@ function segmentedPath(ctx) {
 function makeParticles(count) {
   return Array.from({ length: count }, (_, i) => ({
     angle: (i / count) * TAU + random(-0.14, 0.14),
-    speed: random(95, 400),
+    speed: random(200, 730),
     start: random(0, 0.17),
-    size: random(1.1, 4.8),
+    size: random(1.5, 5.9),
     hue: random(10, 54),
     bend: random(-45, 45),
     flare: Math.random() > 0.66,
@@ -75,7 +75,7 @@ function makeParticles(count) {
 }
 
 export class PowerChargeMeter {
-  constructor({ canvas, surface, onUpdate = () => {}, onPhaseChange = () => {} }) {
+  constructor({ canvas, surface, burstCanvas = null, onUpdate = () => {}, onPhaseChange = () => {} }) {
     if (!(canvas instanceof HTMLCanvasElement) || !(surface instanceof HTMLElement)) {
       throw new TypeError('PowerChargeMeter requires a canvas and an interaction surface.');
     }
@@ -83,6 +83,8 @@ export class PowerChargeMeter {
     this.surface = surface;
     this.ctx = canvas.getContext('2d', { alpha: true });
     if (!this.ctx) throw new Error('This browser does not support Canvas 2D.');
+    this.burstCanvas = burstCanvas instanceof HTMLCanvasElement ? burstCanvas : null;
+    this.burstCtx = this.burstCanvas?.getContext('2d', { alpha: true }) ?? null;
     this.onUpdate = onUpdate;
     this.onPhaseChange = onPhaseChange;
     this.progress = 0;
@@ -96,7 +98,7 @@ export class PowerChargeMeter {
     this.clock = 0;
     this.lastFrame = performance.now();
     this.disposed = false;
-    this.particles = makeParticles(140);
+    this.particles = makeParticles(240);
     this.reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     this.handleDown = this.pointerDown.bind(this);
@@ -120,7 +122,7 @@ export class PowerChargeMeter {
   }
 
   get remaining() {
-    return this.phase === 'hold' ? Math.max(0, HOLD_MS - this.holdElapsed) / 1000 : 3;
+    return this.phase === 'hold' ? Math.max(0, HOLD_MS - this.holdElapsed) / 1000 : 1.5;
   }
 
   get locked() {
@@ -132,6 +134,7 @@ export class PowerChargeMeter {
     this.phase = next;
     this.surface.classList.toggle('is-overdrive', next === 'hold');
     this.surface.classList.toggle('is-burst', next === 'burst');
+    this.surface.closest('.visual-body')?.classList.toggle('is-blasting', next === 'burst');
     this.onPhaseChange(next);
   }
 
@@ -164,7 +167,7 @@ export class PowerChargeMeter {
     this.auto = {
       start: this.progress,
       elapsed: 0,
-      duration: Math.max(400, 1750 * (1 - this.progress)),
+      duration: Math.max(300, 1500 * (1 - this.progress)),
     };
     this.changePhase('charging');
     return true;
@@ -236,6 +239,12 @@ export class PowerChargeMeter {
     this.canvas.width = Math.max(1, Math.round(bounds.width * dpr));
     this.canvas.height = Math.max(1, Math.round(bounds.height * dpr));
     this.ctx.setTransform(this.canvas.width / W, 0, 0, this.canvas.height / H, 0, 0);
+    if (this.burstCtx) {
+      const overlay = this.burstCanvas.getBoundingClientRect();
+      this.burstCanvas.width = Math.max(1, Math.round(overlay.width * dpr));
+      this.burstCanvas.height = Math.max(1, Math.round(overlay.height * dpr));
+      this.burstCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
   }
 
   publish() {
@@ -266,7 +275,7 @@ export class PowerChargeMeter {
       if (this.holdElapsed >= HOLD_MS) {
         this.holdElapsed = HOLD_MS;
         this.burstElapsed = 0;
-        this.particles = makeParticles(this.reduceMotion ? 36 : 140);
+        this.particles = makeParticles(this.reduceMotion ? 55 : 240);
         this.changePhase('burst');
       }
     } else if (this.phase === 'burst') {
@@ -349,68 +358,47 @@ export class PowerChargeMeter {
       ctx.stroke();
     }
     ctx.restore();
+    // Burst graphics are drawn in the full-scene overlay, not the segmented mask.
+    // In embedded HUDs without an overlay, still allow a smaller outward blast.
+    if (this.phase === 'burst' && !this.burstCtx) this.paintExteriorBurst(ctx, W / 2, 398, .6);
+    this.paintOverlay();
   }
 
   paintCharge(ctx, time) {
-    const front = TOP + SPAN * this.progress;
-    const halfWidth = halfWidthAt(front);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, TOP, W, front - TOP);
-    ctx.clip();
-
-    // Layered gradient: cool entry energy heats to amber and incandescent orange.
-    const energy = ctx.createLinearGradient(0, TOP, 0, BOTTOM);
-    energy.addColorStop(0, SEGMENT_COLORS[0]);
+    // No rectangular progress clip or illuminated rectangular moving boundary.
+    // Each of the ten trapezoid cells brightens independently. The geometry
+    // remains segmented even at fractional charge values.
+    const count = this.reduceMotion ? 3 : 8;
     for (let i = 0; i < SEGMENTS; i++) {
-      energy.addColorStop((i + .5) / SEGMENTS, SEGMENT_COLORS[i]);
-    }
-    energy.addColorStop(1, SEGMENT_COLORS[SEGMENTS - 1]);
-    ctx.fillStyle = energy;
-    ctx.globalAlpha = 0.83 + 0.07 * Math.sin(time * 9);
-    ctx.fillRect(0, TOP, W, SPAN);
-    ctx.globalAlpha = 1;
-
-    const glow = ctx.createLinearGradient(0, front - 92, 0, front + 20);
-    glow.addColorStop(0, 'rgba(247,255,240,0)');
-    glow.addColorStop(0.75, 'rgba(229,255,220,.18)');
-    glow.addColorStop(1, 'rgba(255,245,201,.85)');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, Math.max(TOP, front - 92), W, 115);
-
-    // Cellular energy ribs, diagonal currents and drifting micro-sparks.
-    ctx.globalCompositeOperation = 'screen';
-    ctx.lineWidth = 1;
-    for (let i = 0; i < 18; i++) {
-      const y = TOP + i * 28 + (time * 22) % 28;
-      ctx.strokeStyle = i % 2 ? 'rgba(184,255,250,.13)' : 'rgba(255,255,255,.21)';
+      const power = clamp(this.progress * SEGMENTS - i);
+      if (!power) continue;
+      const { y1, y2 } = segmentBounds(i);
+      ctx.save();
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(W, y - 21);
-      ctx.stroke();
+      addSegmentPath(ctx, i);
+      ctx.clip();
+      const light = ctx.createLinearGradient(0, y1, 0, y2);
+      light.addColorStop(0, '#ffffff');
+      light.addColorStop(.22, SEGMENT_COLORS[i]);
+      light.addColorStop(1, SEGMENT_COLORS[i]);
+      ctx.globalAlpha = power * (.75 + .08 * Math.sin(time * 11 + i));
+      ctx.fillStyle = light;
+      ctx.fill();
+      ctx.globalAlpha = .38 * power;
+      ctx.globalCompositeOperation = 'screen';
+      const sweep = y1 + ((time * 50 + i * 29) % Math.max(1, y2 - y1));
+      ctx.fillStyle = 'rgba(244,255,246,.42)';
+      ctx.fillRect(W / 2 - halfWidthAt(sweep), sweep, halfWidthAt(sweep) * 2, 1.2);
+      ctx.globalAlpha = .78 * power;
+      for (let j = 0; j < count; j++) {
+        const seed = j * 24.37 + i * 53.1;
+        const y = y1 + ((j * 17 + time * (24 + j * 9)) % (y2 - y1));
+        const x = W / 2 + Math.sin(seed + time * (1 + j % 3)) * halfWidthAt(y) * .68;
+        ctx.fillStyle = 'rgba(255,255,228,.85)';
+        ctx.fillRect(x, y, 1.3, 2 + j % 3);
+      }
+      ctx.restore();
     }
-    const count = this.reduceMotion ? 16 : 48;
-    for (let i = 0; i < count; i++) {
-      const seed = i * 71.39;
-      const y = TOP + ((i * 53 + time * (70 + i % 5 * 25)) % SPAN);
-      const x = 160 + Math.sin(seed + time * (1 + i % 7)) * (30 + i % 6 * 20);
-      const alpha = 0.25 + 0.45 * (0.5 + 0.5 * Math.sin(time * 3 + seed));
-      ctx.fillStyle = 'rgba(236,255,226,' + alpha.toFixed(2) + ')';
-      ctx.fillRect(x, y, i % 7 ? 1.6 : 3.2, i % 4 ? 5 : 13);
-    }
-    ctx.restore();
-
-    // Energy leading edge has an illuminated horizontal contact surface.
-    ctx.save();
-    ctx.beginPath();
-    ctx.moveTo(W / 2 - halfWidth, front);
-    ctx.lineTo(W / 2 + halfWidth, front);
-    ctx.strokeStyle = this.progress > 0.75 ? '#ffe5a5' : '#d0fff9';
-    ctx.lineWidth = 2.5;
-    ctx.shadowColor = this.progress > 0.75 ? '#ffbd63' : '#50f7e9';
-    ctx.shadowBlur = 17;
-    ctx.stroke();
-    ctx.restore();
   }
 
   paintOverdrive(ctx, time) {
@@ -441,8 +429,8 @@ export class PowerChargeMeter {
       ctx.lineWidth = i % 5 ? 1 : 2.5;
       ctx.stroke();
     }
-    if (sec > 2.3) {
-      ctx.fillStyle = 'rgba(255,255,255,' + ((sec - 2.3) / 0.7 * 0.21) + ')';
+    if (sec > 1.0) {
+      ctx.fillStyle = 'rgba(255,255,255,' + ((sec - 1.0) / 0.5 * 0.27) + ')';
       ctx.fillRect(0, TOP, W, SPAN);
     }
     ctx.restore();
@@ -480,7 +468,7 @@ export class PowerChargeMeter {
     }
     ctx.shadowBlur = 0;
 
-    const amount = this.reduceMotion ? 36 : this.particles.length;
+    const amount = this.reduceMotion ? 55 : this.particles.length;
     for (let i = 0; i < amount; i++) {
       const p = this.particles[i];
       const life = clamp((t - p.start) / (1 - p.start));
@@ -502,6 +490,88 @@ export class PowerChargeMeter {
         ctx.fillStyle = 'rgba(255,253,219,' + opacity + ')';
         ctx.fill();
       }
+    }
+    ctx.restore();
+  }
+
+  paintOverlay() {
+    if (!this.burstCtx) return;
+    const ctx = this.burstCtx;
+    const r = this.burstCanvas.getBoundingClientRect();
+    // Pixel sizes are scaled by resize() to the current devicePixelRatio.
+    ctx.clearRect(0, 0, r.width, r.height);
+    if (this.phase !== 'burst') return;
+    const meter = this.surface.getBoundingClientRect();
+    const centerX = meter.left - r.left + meter.width * .5;
+    const centerY = meter.top - r.top + meter.height * (398 / H);
+    this.paintExteriorBurst(ctx, centerX, centerY, Math.max(.7, Math.min(1.3, r.width / 670)));
+  }
+
+  paintExteriorBurst(ctx, cx, cy, scale) {
+    const t = clamp(this.burstElapsed / BURST_MS);
+    const fade = 1 - smooth((t - .31) / .69);
+    const entry = easeOut(t);
+    ctx.save();
+    ctx.globalCompositeOperation = 'screen';
+
+    // Oversized orange-white blast halo, extending far beyond the narrow meter.
+    const glowRadius = (85 + 320 * entry) * scale;
+    const halo = ctx.createRadialGradient(cx, cy, 0, cx, cy, glowRadius);
+    halo.addColorStop(0, 'rgba(255,255,241,' + (.94 * fade) + ')');
+    halo.addColorStop(.12, 'rgba(255,229,146,' + (.76 * fade) + ')');
+    halo.addColorStop(.37, 'rgba(255,131,47,' + (.56 * fade) + ')');
+    halo.addColorStop(.72, 'rgba(245,43,39,' + (.27 * fade) + ')');
+    halo.addColorStop(1, 'rgba(250,42,35,0)');
+    ctx.fillStyle = halo;
+    ctx.fillRect(cx - glowRadius, cy - glowRadius, glowRadius * 2, glowRadius * 2);
+
+    // Three huge expanding rings. No clipping: these pass into the surroundings.
+    for (let ring = 0; ring < 3; ring++) {
+      const p = clamp((t - ring * .09) / (1 - ring * .09));
+      if (t < ring * .09) continue;
+      const radius = (24 + easeOut(p) * (280 + ring * 85)) * scale;
+      const opacity = (1 - smooth(p)) * (ring === 0 ? .95 : .7);
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, TAU);
+      ctx.lineWidth = (8 - ring * 1.6) * (1 - p * .68) * scale;
+      ctx.strokeStyle = 'rgba(255,' + (ring === 1 ? '244,173' : '167,75') + ',' + opacity + ')';
+      ctx.shadowColor = '#ff7f36';
+      ctx.shadowBlur = 25 * scale;
+      ctx.stroke();
+    }
+    ctx.shadowBlur = 0;
+
+    // Long flame-like radial spikes add a strong outward impact silhouette.
+    const rays = this.reduceMotion ? 10 : 22;
+    for (let i = 0; i < rays; i++) {
+      const a = i / rays * TAU + Math.sin(i * 71.1) * .09;
+      const inner = (9 + 24 * entry) * scale;
+      const outer = (85 + (180 + (i * 37) % 190) * entry) * scale;
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * inner, cy + Math.sin(a) * inner);
+      ctx.lineTo(cx + Math.cos(a + .01) * outer, cy + Math.sin(a + .01) * outer);
+      ctx.lineWidth = (1 + i % 4 * 1.2) * (1 - t * .55) * scale;
+      ctx.strokeStyle = 'rgba(255,' + (i % 3 ? '177,69' : '253,198') + ',' + (fade * (i % 3 ? .78 : 1)) + ')';
+      ctx.stroke();
+    }
+
+    // Ejected debris travels outside the cell mask with fading fiery trails.
+    const particles = this.reduceMotion ? 55 : this.particles.length;
+    for (let i = 0; i < particles; i++) {
+      const p = this.particles[i];
+      const life = clamp((t - p.start) / (1 - p.start));
+      if (life <= 0 || life >= 1) continue;
+      const speed = p.speed * life * 1.2 * scale;
+      const x = cx + Math.cos(p.angle) * speed + p.bend * life * life;
+      const y = cy + Math.sin(p.angle) * speed * .92 + p.bend * .2 * life;
+      const opacity = Math.pow(1 - life, 1.5) * fade;
+      const trail = (12 + 65 * (1 - life)) * scale;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x - Math.cos(p.angle) * trail, y - Math.sin(p.angle) * trail * .92);
+      ctx.lineWidth = p.size * (1 - life * .67) * scale;
+      ctx.strokeStyle = 'hsla(' + p.hue + ',100%,' + (p.flare ? 94 : 67) + '%,' + opacity + ')';
+      ctx.stroke();
     }
     ctx.restore();
   }
@@ -542,8 +612,8 @@ if (canvas && surface) {
   const text = {
     idle: ['等待蓄力', 'STANDBY', '向下拖动 · 注入能量'],
     charging: ['能量注入中', 'CHARGING', '继续下拉 · 直至 100%'],
-    hold: ['超载临界！', 'OVERDRIVE', '临界震动 · 保持 3 秒'],
-    burst: ['能量爆炸！', 'DETONATION', '冲击波爆发 · 槽内释放'],
+    hold: ['超载临界！', 'OVERDRIVE', '临界震动 · 1.5 秒后爆炸'],
+    burst: ['能量爆炸！', 'DETONATION', '冲击波爆发 · 向槽外扩散'],
     clearing: ['清空复位', 'RESETTING', '能量归零 · 准备下一击'],
   };
   const names = ['charge', 'hold', 'burst', 'clear'];
@@ -553,13 +623,14 @@ if (canvas && surface) {
   const meter = new PowerChargeMeter({
     canvas,
     surface,
+    burstCanvas: document.querySelector('#burst-canvas'),
     onUpdate({ progress, percent: p, phase, remaining, holdElapsed }) {
       percent.textContent = String(p).padStart(3, '0');
       status.textContent = text[phase][0];
       stageCode.textContent = text[phase][1];
       instruction.textContent = text[phase][2];
       holdLabel.textContent = phase === 'hold' ? '高能锁定 / 即将释放' : phase === 'burst' ? '检测到能量爆裂' : '满槽后自动倒计时';
-      countdown.innerHTML = (phase === 'hold' ? remaining.toFixed(1) : '3.0') + '<span>S</span>';
+      countdown.innerHTML = (phase === 'hold' ? remaining.toFixed(1) : '1.5') + '<span>S</span>';
       timeProgress.style.width = (phase === 'hold' ? (holdElapsed / HOLD_MS) * 100 : phase === 'burst' ? 100 : 0) + '%';
       phases.forEach((el, index) => {
         el.classList.toggle('active', index === current[phase]);
