@@ -553,7 +553,7 @@ if (canvas && surface) {
         el.classList.toggle('passed', phase !== 'idle' && index < current[phase]);
       });
       hint.classList.toggle('is-hidden', progress > .015 || phase === 'hold' || phase === 'burst' || phase === 'clearing');
-      autoButton.disabled = meter.locked;
+      autoButton.disabled = phase === 'hold' || phase === 'burst' || phase === 'clearing';
       if (phase !== previousPhase) {
         previousPhase = phase;
         liveStatus.textContent = text[phase][0];
