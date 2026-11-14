@@ -86,6 +86,7 @@ export class LightningRainbowTrail {
     this.scene=targetScene;
     this.enabled=true;
     this.palette='aurora';
+    this.reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.time=0;
     this.lightPool=Array.from({length:MAX_GLOW},()=>({active:false}));
     this.lightCursor=0;
@@ -204,7 +205,7 @@ export class LightningRainbowTrail {
     if(!this.enabled||dt<=0||!Number.isFinite(position.x))return;
     const strength=clamp(intensity,.45,2.6);
     const i=foot===0?0:1;
-    this.lightAcc[i]+=dt*(reducedMotionLike(strength)?17:35)*(0.7+.43*strength);
+    this.lightAcc[i]+=dt*(this.reduced?17:35)*(0.7+.43*strength);
     const sparkRate=4.4+(strength-1)*5;
     this.arcAcc[i]+=dt*Math.max(2,sparkRate);
     let safeguard=0;
@@ -334,9 +335,3 @@ export class LightningRainbowTrail {
   }
 }
 
-// Used only to avoid a global timing dependency; reduced-motion users receive
-// simpler, less frequent particles even during a high-energy dash.
-function reducedMotionLike() {
-  return typeof window !== 'undefined' &&
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
