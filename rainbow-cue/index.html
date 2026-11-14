@@ -30,7 +30,17 @@
       </section>
 
       <section class="stage" aria-label="实时三维母球预览">
-        <div class="stage-top"><span><i class="status-dot"></i> LIVE 3D PREVIEW</span><span>01 — RAINBOW CUE</span></div>
+        <div class="stage-top">
+          <span><i class="status-dot"></i> LIVE 3D PREVIEW</span>
+          <div class="palette-picker stage-palette" role="group" aria-label="拖尾颜色方案">
+            <span class="stage-palette-label">拖尾色彩 /</span>
+            <div class="palette-options">
+              <button class="palette-choice" type="button" data-palette="warm" aria-pressed="true"><span class="palette-swatch warm-swatch" aria-hidden="true"></span><span>暖色光雾 <small>PEACH / ROSE</small></span><span class="palette-check">●</span></button>
+              <button class="palette-choice" type="button" data-palette="cool" aria-pressed="false"><span class="palette-swatch cool-swatch" aria-hidden="true"></span><span>冷色光雾 <small>MINT / LAVENDER</small></span><span class="palette-check">●</span></button>
+            </div>
+          </div>
+          </div>
+        </div>
         <div class="stage-view" id="stage-view">
           <canvas id="scene" aria-label="白色台球沿台呢滚动，后方出现彩虹拖尾和闪烁的四角星"></canvas>
           <div class="stage-corner upper-left"><span>FX / MOTION STUDY</span><strong>虹彩轨迹</strong><small>SOFT GLOW / FOUR-POINT STARS</small></div>
@@ -57,20 +67,13 @@
             <input type="range" id="power" min="30" max="100" step="5" value="75" aria-label="初始击球力度百分比">
             <div class="power-labels"><span>SOFT</span><span>STRONG</span></div>
           </div>
-          <div class="palette-picker" role="group" aria-label="拖尾颜色方案">
-            <div class="palette-head"><span>拖尾色彩 / COLOR MOOD</span><span>SOFT GRADIENT</span></div>
-            <div class="palette-options">
-              <button class="palette-choice" type="button" data-palette="warm" aria-pressed="true"><span class="palette-swatch warm-swatch" aria-hidden="true"></span><span>暖色光雾 <small>PEACH / ROSE</small></span><span class="palette-check">●</span></button>
-              <button class="palette-choice" type="button" data-palette="cool" aria-pressed="false"><span class="palette-swatch cool-swatch" aria-hidden="true"></span><span>冷色光雾 <small>MINT / LAVENDER</small></span><span class="palette-check">●</span></button>
-            </div>
-          </div>
           <div class="actions">
             <button id="hit" class="btn hit" type="button"><span class="play-icon">▶</span> 击打 <span class="btn-arrow">↗</span></button>
             <button id="reset" class="btn reset" type="button" aria-label="重置母球位置及特效"><span>↺</span> 重置</button>
           </div>
         </div>
       </section>
-      <section class="details"><div><p class="eyebrow">HOW IT WORKS</p><h2>真实移动的球，留在身后的光。</h2><p>速度逐帧衰减，球面按滚动距离旋转；彩虹改为没有硬边界的体积柔光，暖桃玫瑰和冷薄荷丁香两种相近色系可随时切换；四角星沿球的路径闪烁、淡出。</p></div>
+      <section class="details"><div><p class="eyebrow">HOW IT WORKS</p><h2>真实移动的球，留在身后的光。</h2><p>速度逐帧衰减，球面按滚动距离旋转；彩虹改为没有硬边界的体积柔光，暖桃玫瑰和冷薄荷丁香两种相近色系可随时切换；四角星贴近母球与台呢接触位置闪烁、淡出。</p></div>
         <a href="https://github.com/GioGyan90/3d_React_test2/tree/main/rainbow-cue/" target="_blank" rel="noopener noreferrer">查看实现源码 <span>↗</span></a>
       </section>
     </main>
