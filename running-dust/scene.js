@@ -92,8 +92,6 @@ function connect(mesh, p1, p2) {
   mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.sub(a).normalize());
 }
 const RUNNER_X = 1.55;
-const hips = new THREE.Group();
-scene.add(hips);
 const torso = new THREE.Mesh(new THREE.CylinderGeometry(.36, .29, .68, 8), material(0xe7b2a4));
 torso.position.set(RUNNER_X, 2.48, 0);
 scene.add(torso);
@@ -138,7 +136,8 @@ function animateLegs(phase, landing = true) {
   for (let i = 0; i < legParts.length; i++) {
     const part = legParts[i];
     const a = phase + i * Math.PI;
-    const inAir = Math.sin(a) > 0;
+    // Tiny floating-point sin(PI) errors must not create a phantom landing.
+    const inAir = Math.sin(a) > .015;
     const lift = Math.max(0, Math.sin(a)) * .40;
     const ankleX = RUNNER_X + Math.cos(a) * .58;
     const ankleY = platformTop + .04 + lift;
@@ -165,11 +164,9 @@ const PALETTES = {
 };
 const cloudGeo = new THREE.IcosahedronGeometry(1, 1);
 const POOL_SIZE = reducedMotion ? 56 : 120;
-const puffPool = [];
 let tone = 'sand';
 let emittedTotal = 0;
 let impacts = 0;
-let poolCursor = 0;
 
 export class DustEmitter {
   constructor(targetScene = scene) {
@@ -280,8 +277,6 @@ let speed = Number(speedInput.value);
 let density = Number(densityInput.value);
 let running = true;
 let phase = .35;
-let totalTime = 0;
-let runningFrames = 0;
 let pointer = null;
 const frame = { id: 0 };
 
@@ -299,7 +294,7 @@ function reset() {
   impacts = 0;
   emittedTotal = 0;
   animateLegs(phase, false);
-  legParts.forEach(part => { part.previousAir = Math.sin(phase + (part === legParts[0] ? 0 : Math.PI)) > 0; });
+  legParts.forEach((part, i) => { part.previousAir = Math.sin(phase + i * Math.PI) > .015; });
   updateButtons();
   updateReadouts();
 }
@@ -332,12 +327,10 @@ function resize() {
 function animate() {
   frame.id = requestAnimationFrame(animate);
   const dt = document.hidden ? 0 : Math.min(.05, clock.getDelta());
-  totalTime += dt;
   if (running && dt > 0) {
     // Alternating feet: each leg makes contact once per full stride.
     phase += dt * speed * 2.1 * Math.PI;
     animateLegs(phase, true);
-    runningFrames++;
   }
   dust.update(dt);
   cameraView();
