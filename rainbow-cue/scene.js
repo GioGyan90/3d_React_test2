@@ -14,10 +14,24 @@ const speedLabel = $('#speed-value');
 const speedFill = $('#speed-fill');
 const phaseLabel = $('#phase-label');
 const renderStatus = $('#render-status');
+const trailHeightSlider = $('#trail-height');
+const trailHeightOutput = $('#trail-height-output');
+const starHeightSlider = $('#star-height-offset');
+const starHeightOutput = $('#star-height-output');
+const heightParameters = $('#height-parameters');
+const copyHeightButton = $('#copy-height-params');
+const resetHeightButton = $('#tuning-reset');
+const copyHeightFeedback = $('#copy-height-feedback');
 const paletteButtons = [...document.querySelectorAll('[data-palette]')];
 
 const RADIUS = 0.56;
-const TRAIL_CONTACT_Y = 0.095; // just above the felt at y = -0.02
+// Temporary tuning parameters. Once approved, fix these numbers in source
+// and remove the height-tuner UI + handlers.
+const DEFAULT_TRAIL_Y = 0.095;
+const DEFAULT_STAR_Y_OFFSET = 0.000;
+const TUNING_STORAGE_KEY = 'rainbow-cue-height-tuning-v1';
+let trailContactY = DEFAULT_TRAIL_Y;
+let starYOffset = DEFAULT_STAR_Y_OFFSET;
 const TRAIL_ATTACH = RADIUS * .22; // under the rolling ball, near the contact patch
 const START_X = -2.6;
 const FRICTION = 2.35; // units / s^2
@@ -319,7 +333,7 @@ function ageStars() {
     const twinkle = Math.pow(.5 + .5 * Math.sin(age * s.frequency + s.phase), 2);
     s.sprite.material.opacity = fade * (.32 + .68 * twinkle) * .95;
     s.sprite.scale.setScalar(s.size * (.67 + .65 * twinkle));
-    s.sprite.position.y = s.baseY + Math.sin(time * 2.1 + s.phase) * .025;
+    s.sprite.position.y = Math.max(-.009, s.baseY + starYOffset + Math.sin(time * 2.1 + s.phase) * .025);
     s.sprite.material.rotation += .006;
   }
 }
@@ -380,7 +394,7 @@ function updateRibbon() {
       const edgeFalloff = .55 + .45 * Math.exp(-2.5 * side * side);
       const wave = Math.sin(sample.x * 2.1 - time * 3.0 + u * 2.5) * .085;
       const z = side * spread * .56 + wave;
-      const y = TRAIL_CONTACT_Y + .032 * (1 - side * side) +
+      const y = trailContactY + .032 * (1 - side * side) +
         .015 * Math.sin(sample.x * 2.6 - time * 4.2 + u * 2.0) + age * .02;
       for (let layer = 0; layer < CLOUD_LAYERS; layer++) {
         const k = count * 3;
@@ -466,6 +480,73 @@ viewport.addEventListener('wheel', e => {
   cameraDistance = clamp(cameraDistance + e.deltaY * .008, 6.4, 15);
 }, { passive: false });
 
+// The UI uses the actual world-space parameters (not CSS offsets), so values
+// copied from here can be committed exactly as production scene constants.
+function formatSigned(n) { return (n >= 0 ? '+' : '') + n.toFixed(3); }
+function normalizeTuning(v, min, max, fallback) {
+  if (!Number.isFinite(Number(v))) return fallback;
+  return Number((Math.round(clamp(Number(v), min, max) / .005) * .005).toFixed(3));
+}
+function updateTuningUI() {
+  trailHeightSlider.value = trailContactY.toFixed(3);
+  starHeightSlider.value = starYOffset.toFixed(3);
+  trailHeightOutput.textContent = trailContactY.toFixed(3);
+  starHeightOutput.textContent = formatSigned(starYOffset);
+  heightParameters.textContent = 'TRAIL_CONTACT_Y=' + trailContactY.toFixed(3) +
+    '; STAR_Y_OFFSET=' + formatSigned(starYOffset);
+}
+function persistTuning() {
+  try {
+    window.localStorage.setItem(TUNING_STORAGE_KEY,
+      JSON.stringify({ trailContactY, starYOffset }));
+  } catch { /* Private browsing can block persistent storage. */ }
+}
+function setTuning(nextTrail, nextStar, persist = true) {
+  trailContactY = normalizeTuning(nextTrail, .015, .260, DEFAULT_TRAIL_Y);
+  starYOffset = normalizeTuning(nextStar, -.100, .120, DEFAULT_STAR_Y_OFFSET);
+  updateTuningUI();
+  copyHeightFeedback.textContent = '';
+  if (persist) persistTuning();
+}
+function restoreTuning() {
+  try {
+    const saved = JSON.parse(window.localStorage.getItem(TUNING_STORAGE_KEY));
+    if (saved && typeof saved === 'object') {
+      setTuning(saved.trailContactY, saved.starYOffset, false);
+      return;
+    }
+  } catch { /* Ignore unavailable or malformed local storage. */ }
+  setTuning(DEFAULT_TRAIL_Y, DEFAULT_STAR_Y_OFFSET, false);
+}
+trailHeightSlider.addEventListener('input', () =>
+  setTuning(trailHeightSlider.value, starYOffset));
+starHeightSlider.addEventListener('input', () =>
+  setTuning(trailContactY, starHeightSlider.value));
+resetHeightButton.addEventListener('click', () => {
+  setTuning(DEFAULT_TRAIL_Y, DEFAULT_STAR_Y_OFFSET, false);
+  try { window.localStorage.removeItem(TUNING_STORAGE_KEY); } catch {}
+});
+copyHeightButton.addEventListener('click', async () => {
+  const value = heightParameters.textContent;
+  try {
+    await navigator.clipboard.writeText(value);
+    copyHeightFeedback.textContent = '已复制，可直接发给我';
+  } catch {
+    // Fallback for browsers without clipboard permission.
+    const field = document.createElement('textarea');
+    field.value = value;
+    field.setAttribute('readonly', '');
+    field.style.position = 'fixed';
+    field.style.opacity = '0';
+    document.body.appendChild(field);
+    field.select();
+    let copied = false;
+    try { copied = document.execCommand('copy'); } catch {}
+    field.remove();
+    copyHeightFeedback.textContent = copied ? '已复制，可直接发给我' : '请手动复制左侧参数';
+  }
+});
+
 powerInput.addEventListener('input', () => {
   power = Number(powerInput.value);
   powerOutput.value = power + '%';
@@ -480,7 +561,7 @@ document.addEventListener('visibilitychange', () => { clock.getDelta(); });
 window.addEventListener('resize', resize);
 const observer = new ResizeObserver(resize);
 observer.observe(viewport);
-resize(); reset(); setPalette('warm'); render();
+restoreTuning(); resize(); reset(); setPalette('warm'); render();
 
 window.addEventListener('pagehide', () => {
   cancelAnimationFrame(animationId);
