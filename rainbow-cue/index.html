@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1421">
+  <meta name="description" content="Lucky Break Three.js 母球彩虹拖尾实验：击打、滚动衰减、七色渐变光带与闪烁四角星。">
+  <title>Rainbow Cue · 母球彩虹拖尾</title>
+  <link rel="stylesheet" href="./style.css">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="../elemental-pocket/"><span class="brand-icon">✦</span><span>LUCKY BREAK <em>/</em> FX STUDIO</span></a>
+      <nav class="nav-links" aria-label="其他特效">
+        <a href="../elemental-pocket/">进球特效</a>
+        <a href="../power-charge/">力量蓄力</a>
+        <span class="current">彩虹拖尾</span>
+      </nav>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div>
+          <p class="eyebrow"><span>06 / RAINBOW TRAIL</span> &nbsp; · &nbsp; THREE.JS FX EXPERIMENT</p>
+          <h1>一击之后，<br><span>留下整片星光。</span></h1>
+          <p class="lead">洁白母球滚动前行。虹彩光带在球后流动，大小不一的四角星随速度闪烁；滚动阻力使光迹渐渐沉静。</p>
+        </div>
+        <div class="intro-spark" aria-hidden="true">✧<span>✦</span></div>
+      </section>
+
+      <section class="stage" aria-label="实时三维母球预览">
+        <div class="stage-top"><span><i class="status-dot"></i> LIVE 3D PREVIEW</span><span>01 — RAINBOW CUE</span></div>
+        <div class="stage-view" id="stage-view">
+          <canvas id="scene" aria-label="白色台球沿台呢滚动，后方出现彩虹拖尾和闪烁的四角星"></canvas>
+          <div class="stage-corner upper-left"><span>FX / MOTION STUDY</span><strong>虹彩轨迹</strong><small>SEVEN-COLOR / FOUR-POINT STARS</small></div>
+          <div class="stage-corner upper-right"><span class="render-indicator"><i></i><span id="render-status">READY</span></span></div>
+          <div class="stage-corner lower-left"><span class="minor-line"></span> 拖动画面可旋转视角 · 滚轮可缩放</div>
+          <div class="stage-corner lower-right">THREE.JS · WEBGL</div>
+          <div class="scene-error" id="scene-error" hidden role="alert">三维预览暂时无法加载，请确认浏览器支持 WebGL，且可以访问 Three.js 模块资源。</div>
+        </div>
+        <div class="stage-bottom">
+          <span class="pill-label"><span class="pill-dot"></span><span id="phase-label">准备击打</span></span>
+          <div class="phase-meter"><div id="speed-fill"></div></div>
+          <span class="unit-readout"><strong id="speed-value">0.0</strong> <small>UNITS / S</small></span>
+        </div>
+      </section>
+
+      <section class="controls">
+        <div class="control-intro">
+          <p class="eyebrow">02 / INTERACTION</p>
+          <h2>控制这一杆</h2>
+          <p>点击击打，从起点重新发射母球。球体真实旋转，拖尾随运动生成，停球后自然消散。</p>
+        </div>
+        <div class="control-right">
+          <div class="power"><div class="power-head"><label for="power">初始击球力度</label><output id="power-output" for="power">75%</output></div>
+            <input type="range" id="power" min="30" max="100" step="5" value="75" aria-label="初始击球力度百分比">
+            <div class="power-labels"><span>SOFT</span><span>STRONG</span></div>
+          </div>
+          <div class="actions">
+            <button id="hit" class="btn hit" type="button"><span class="play-icon">▶</span> 击打 <span class="btn-arrow">↗</span></button>
+            <button id="reset" class="btn reset" type="button" aria-label="重置母球位置及特效"><span>↺</span> 重置</button>
+          </div>
+        </div>
+      </section>
+      <section class="details"><div><p class="eyebrow">HOW IT WORKS</p><h2>真实移动的球，留在身后的光。</h2><p>速度逐帧衰减，球面按滚动距离旋转；彩虹由七条连续半透明光带组成，微光粒子与四角星在球后逐渐淡出。</p></div>
+        <a href="https://github.com/GioGyan90/3d_React_test2/tree/main/rainbow-cue/" target="_blank" rel="noopener noreferrer">查看实现源码 <span>↗</span></a>
+      </section>
+    </main>
+    <footer><span>LUCKY BREAK / FX LAB</span><span>RAINBOW CUE · EXPERIMENT 06</span></footer>
+  </div>
+  <script type="module">
+    import("./scene.js").catch((error) => {
+      console.error("Rainbow Cue failed to load", error);
+      const warning = document.querySelector("#scene-error");
+      if (warning) warning.hidden = false;
+      const status = document.querySelector("#render-status");
+      if (status) status.textContent = "UNAVAILABLE";
+    });
+  </script>
+</body>
+</html>
