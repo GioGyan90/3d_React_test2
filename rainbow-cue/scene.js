@@ -17,6 +17,8 @@ const renderStatus = $('#render-status');
 const paletteButtons = [...document.querySelectorAll('[data-palette]')];
 
 const RADIUS = 0.56;
+const TRAIL_CONTACT_Y = 0.095; // just above the felt at y = -0.02
+const TRAIL_ATTACH = RADIUS * .22; // under the rolling ball, near the contact patch
 const START_X = -2.6;
 const FRICTION = 2.35; // units / s^2
 const TRAIL_LIFETIME = 2.8;
@@ -287,7 +289,7 @@ function reset() {
 function hit() {
   reset();
   velocity = initialSpeed(); launchVelocity = velocity;
-  lastSampleX = ball.position.x - RADIUS * .74;
+  lastSampleX = ball.position.x - TRAIL_ATTACH;
   trail.push({ x: lastSampleX, born: time });
   updateHUD();
 }
@@ -297,7 +299,7 @@ function spawnStar() {
   s.active = true; s.born = time;
   s.life = random(.70, 2.4);
   s.size = random(.075, .245) * (Math.random() < .13 ? 1.65 : 1);
-  s.baseY = random(.32, .99);
+  s.baseY = random(.12, .39); // most starbursts skim the felt
   s.phase = random(0, Math.PI * 2);
   s.frequency = random(7.4, 18);
   s.colorIndex = Math.floor(random(0, activeColors.length));
@@ -317,12 +319,12 @@ function ageStars() {
     const twinkle = Math.pow(.5 + .5 * Math.sin(age * s.frequency + s.phase), 2);
     s.sprite.material.opacity = fade * (.32 + .68 * twinkle) * .95;
     s.sprite.scale.setScalar(s.size * (.67 + .65 * twinkle));
-    s.sprite.position.y = s.baseY + Math.sin(time * 2.1 + s.phase) * .062;
+    s.sprite.position.y = s.baseY + Math.sin(time * 2.1 + s.phase) * .025;
     s.sprite.material.rotation += .006;
   }
 }
 function sampleTrail(distance) {
-  const tip = ball.position.x - RADIUS * .74;
+  const tip = ball.position.x - TRAIL_ATTACH;
   const step = .085;
   let iterations = 0;
   while (tip - lastSampleX >= step && iterations < 22) {
@@ -362,14 +364,13 @@ function updateRibbon() {
   // Each point is an overlapping soft glowing cloud, not a polygon-edge strip.
   if (!trail.length) { ribbonGeo.setDrawRange(0, 0); return; }
   const pts = velocity > MIN_SPEED
-    ? [...trail, { x: ball.position.x - RADIUS * .74, born: time }]
+    ? [...trail, { x: ball.position.x - TRAIL_ATTACH, born: time }]
     : trail;
   let count = 0;
   for (const sample of pts) {
     if (count + CLOUD_SLICES * CLOUD_LAYERS > MAX_CLOUD_POINTS) break;
     const age = clamp((time - sample.born) / TRAIL_LIFETIME, 0, 1);
     const fade = Math.pow(1 - smooth(age), 1.5);
-    const drift = Math.sin(time * 2.5 - sample.x * 2.8);
     const spread = .78 + age * .20;
     for (let slice = 0; slice < CLOUD_SLICES; slice++) {
       const u = (slice + .5) / CLOUD_SLICES;
@@ -379,12 +380,12 @@ function updateRibbon() {
       const edgeFalloff = .55 + .45 * Math.exp(-2.5 * side * side);
       const wave = Math.sin(sample.x * 2.1 - time * 3.0 + u * 2.5) * .085;
       const z = side * spread * .56 + wave;
-      const y = .46 + .15 * (1 - side * side) +
-        .07 * Math.sin(sample.x * 2.6 - time * 4.2 + u * 2.0) + age * .07;
+      const y = TRAIL_CONTACT_Y + .032 * (1 - side * side) +
+        .015 * Math.sin(sample.x * 2.6 - time * 4.2 + u * 2.0) + age * .02;
       for (let layer = 0; layer < CLOUD_LAYERS; layer++) {
         const k = count * 3;
         positions[k] = sample.x + .015 * Math.sin(u * 21 + sample.x * 2.0 + layer * 1.8);
-        positions[k + 1] = y + (layer === 0 ? .04 : -.02);
+        positions[k + 1] = y + (layer === 0 ? .016 : -.012);
         positions[k + 2] = z;
         tints[k] = color.r; tints[k + 1] = color.g; tints[k + 2] = color.b;
         const flicker = .92 + .08 * Math.sin(time * 4.1 + sample.x * 7.0 + u * 5.0);
