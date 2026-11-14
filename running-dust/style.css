@@ -41,3 +41,33 @@ footer{height:76px;border-top:1px solid #cdebe216;display:flex;justify-content:s
 @media(max-width:1060px){.shell{padding:0 28px}.workbench{grid-template-columns:1fr;gap:24px}.controls{max-width:850px}.intro-mark{font-size:100px}}
 @media(max-width:650px){.shell{padding:0 16px}.nav{height:auto;min-height:66px;flex-wrap:wrap;padding:13px 0;gap:10px}.identity{font-size:10px}.nav-right{gap:14px;font-size:10px}.nav-right a:first-child{display:none}.intro{padding:40px 0 34px}.intro-mark{display:none}h1{font-size:43px}.intro-copy{font-size:12px}.viewer-top{height:47px;padding:0 13px;font-size:8px}.viewport{height:420px}.top-left{top:15px;left:13px}.top-left b{font-size:16px}.top-right{top:15px;right:13px}.bottom-left{bottom:15px;left:13px}.bottom-right{bottom:15px;right:13px}.viewer-foot{padding:0 10px;gap:9px;height:56px}.readout{gap:5px}.readout span{font-size:7px}.readout strong{font-size:14px}.workbench{padding:36px 0}.controls{grid-template-columns:1fr}.control-actions{gap:10px}.explain{padding:37px 0;align-items:start;flex-direction:column}footer{height:66px;font-size:8px}}
 @media(prefers-reduced-motion:reduce){.viewport{scroll-behavior:auto}}
+
+
+/* Electric rainbow boost panel — soft neon accents, no hard rainbow strips. */
+.electric-controls{border:1px solid #8fc8d73a;border-radius:7px;padding:13px 13px 11px;background:radial-gradient(ellipse at 89% 0,#71458d31,transparent 60%),#142d39}
+.electric-heading{font:700 10px ui-monospace,Consolas,monospace;letter-spacing:.12em;color:#bdeef1;display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:10px}
+.electric-heading span:last-child{color:#c6b8f3;font-size:9px;font-weight:500}
+.electric-meter{height:4px;border-radius:20px;background:#36495a;overflow:hidden;margin-bottom:13px}
+.electric-meter span{height:100%;width:0;display:block;border-radius:20px;background:linear-gradient(90deg,#a7f5ec,#a3bdfa,#edace3,#ffcfab);box-shadow:0 0 15px #bcaaff;transition:width .06s linear}
+.electric-switches{display:flex;gap:8px}
+.electric-switches button{height:39px;border-radius:5px;border:1px solid #98b6c54b;font-size:11px;font-weight:650;display:flex;justify-content:center;align-items:center;gap:8px;white-space:nowrap;padding:0 10px}
+#electric-toggle{flex:1;background:#203644;color:#e0ebee}#electric-toggle[aria-pressed=false]{color:#8f9ea5;background:#182833}
+.electric-led{width:7px;height:7px;border-radius:50%;background:#a7ffe5;box-shadow:0 0 9px #67efc4}
+#electric-toggle[aria-pressed=false] .electric-led{background:#61737b;box-shadow:none}
+#electric-toggle strong{font:700 10px ui-monospace,Consolas,monospace;color:#b6f7d6}
+#electric-toggle[aria-pressed=false] strong{color:#7d929a}
+.boost-button{flex:1;background:linear-gradient(105deg,#c1f3ee,#c6d6fc 50%,#f3c5df);color:#183040;border:0!important;box-shadow:0 3px 19px #cbaff52b}
+.boost-button[aria-pressed=true]{box-shadow:0 0 24px #bba9ee70}
+.electric-palettes{display:flex;gap:7px;margin-top:9px}
+.electric-palettes button{flex:1;min-width:0;padding:7px;border:1px solid #abced536;border-radius:5px;color:#a8bfc7;background:#1b3540;font-size:10px;display:flex;gap:7px;align-items:center;justify-content:center}
+.electric-palettes button[aria-pressed=true]{border-color:#d5d5f0bb;color:#f0f1ff;background:#304554}
+.electric-swatch{width:27px;height:11px;border-radius:2px;display:block;box-shadow:0 0 11px #c2a9fb35}
+.electric-swatch.aurora{background:linear-gradient(90deg,#b9fff4,#72eff1,#7bbdff,#b6a5ff,#f2b1f4)}
+.electric-swatch.sunset{background:linear-gradient(90deg,#ffe9ba,#ffbcad,#f898c8,#c69aff,#8fb7fb)}
+@media(max-width:650px){
+  .viewer-foot{flex-wrap:wrap;height:auto;min-height:64px;padding:9px 10px;row-gap:6px}
+  .viewer-foot-line{display:none}
+  .readout{width:calc(50% - 5px);justify-content:space-between}
+  .readout span{font-size:8px}
+  .readout strong{font-size:14px}
+}
