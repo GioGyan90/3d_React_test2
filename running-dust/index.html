@@ -4,9 +4,9 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0a1520" />
-  <meta name="description" content="Lucky Break 特效展览馆：Three.js 跑步脚下的卡通扬尘，错落烟团后退、上浮、扩散与消散。" />
-  <title>Running Dust · 跑步扬尘特效 | Lucky Break</title>
-  <link rel="stylesheet" href="./style.css?v=1" />
+  <meta name="description" content="Lucky Break 特效展览馆：Three.js 跑步脚下的卡通烟尘与交替闪电彩虹加速拖尾。" />
+  <title>Running Dust & Lightning · 跑步扬尘与闪电彩虹 | Lucky Break</title>
+  <link rel="stylesheet" href="./style.css?v=lightning-1" />
 </head>
 <body>
   <div class="shell">
@@ -18,8 +18,8 @@
       <div class="intro">
         <div>
           <p class="overline"><span>07 / ENVIRONMENTAL FX</span> · THREE.JS EXPERIENCE</p>
-          <h1>脚步落下，<br /><em>尘土飞扬。</em></h1>
-          <p class="intro-copy">几团大小不一的卡通烟雾从落脚点向后弹开，轻轻漂浮、膨胀并消散。用简约低模鞋腿演示节奏与脚底发射位置。</p>
+          <h1>脚步如风，<br /><em>电光随行。</em></h1>
+          <p class="intro-copy">低模双脚交替奔跑，后方拉出柔和彩虹电光与闪烁的闪电分叉；加速冲刺时，拖尾变长、粒子更密集。原有落地扬尘仍同步保留。</p>
         </div>
         <div class="intro-mark" aria-hidden="true">〰</div>
       </div>
@@ -27,11 +27,11 @@
       <section class="viewer" aria-label="跑步扬尘实时三维展览">
         <div class="viewer-top">
           <span><i class="signal"></i> LIVE EFFECT PREVIEW</span>
-          <span class="view-mode">RUNNING DUST · CARTOON SMOKE</span>
+          <span class="view-mode">RUNNING DUST · ELECTRIC RAINBOW</span>
         </div>
         <div class="viewport" id="viewport">
-          <canvas id="scene" aria-label="低模跑步角色双脚交替落地，后方出现大小错落的卡通尘土烟团"></canvas>
-          <div class="view-label top-left">DUST STUDY<br/><b>踏步 / 扬尘</b></div>
+          <canvas id="scene" aria-label="跑步角色双脚交替带出闪电彩虹光迹，同时脚底卡通烟团向后散去"></canvas>
+          <div class="view-label top-left">ELECTRIC SPEED FX<br/><b>踏步 / 电光</b></div>
           <div class="view-label top-right"><span id="live-phase">RUNNING</span><br />KINETIC FX / 03</div>
           <div class="view-label bottom-left">拖动旋转视角 · 滚轮缩放</div>
           <div class="view-label bottom-right">WORLD SPACE / 3D</div>
@@ -43,14 +43,16 @@
           <div class="readout"><span>ACTIVE CLOUDS</span><strong id="active-count">00</strong></div>
           <div class="viewer-foot-line"></div>
           <div class="readout"><span>RUN CYCLE</span><strong id="cycle-count">00</strong></div>
+          <div class="viewer-foot-line"></div>
+          <div class="readout"><span>ELECTRIC FX</span><strong id="electric-count">000</strong></div>
         </div>
       </section>
 
       <section class="workbench">
         <div class="workbench-head">
           <p class="overline">02 / INTERACTION</p>
-          <h2>调节脚步与烟尘</h2>
-          <p>点击开始/暂停观察节奏，也可以单独触发一次踩踏。参数实时生效，方便之后提取成游戏通用的脚步特效组件。</p>
+          <h2>调节奔跑、电光与烟尘</h2>
+          <p>点击「加速冲刺」短暂提高步频，激活更密集的闪电彩虹；左右脚各自向后甩出光迹，原有烟尘可独立保留。</p>
         </div>
         <div class="controls">
           <div class="sliders">
@@ -62,6 +64,18 @@
             <div class="minmax"><span>SPARSE</span><span>DENSE</span></div>
           </div>
           <div class="control-actions">
+            <div class="electric-controls">
+              <div class="electric-heading"><span>⚡ ELECTRIC BOOST</span><span id="boost-state">READY</span></div>
+              <div class="electric-meter" aria-hidden="true"><span id="boost-fill"></span></div>
+              <div class="electric-switches">
+                <button type="button" id="electric-toggle" aria-pressed="true"><span class="electric-led"></span>闪电拖尾 <strong id="electric-toggle-text">ON</strong></button>
+                <button type="button" id="boost" class="boost-button">⚡ 加速冲刺</button>
+              </div>
+              <div class="electric-palettes" role="group" aria-label="闪电彩虹配色">
+                <button type="button" data-electric-tone="aurora" aria-pressed="true"><span class="electric-swatch aurora"></span>极光蓝紫</button>
+                <button type="button" data-electric-tone="sunset" aria-pressed="false"><span class="electric-swatch sunset"></span>落日粉金</button>
+              </div>
+            </div>
             <div class="dust-colors" role="group" aria-label="扬尘配色">
               <button type="button" data-tone="sand" aria-pressed="true"><span class="swatch sand"></span>暖沙色</button>
               <button type="button" data-tone="slate" aria-pressed="false"><span class="swatch slate"></span>冷灰色</button>
@@ -75,14 +89,14 @@
         </div>
       </section>
       <section class="explain">
-        <div><p class="overline">HOW IT WORKS</p><h2>每次落脚，独立生成一簇烟团。</h2><p>脚步触地瞬间生成 2–9 团大小、初速各异的低多边形云朵；烟团向角色身后散开并轻微上浮、膨胀，最后透明消失。烟团使用对象池复用，方便嵌入 Three.js 游戏。</p></div>
+        <div><p class="overline">HOW IT WORKS</p><h2>两只脚交替拉出电光，触地再扬起烟尘。</h2><p>脚掌在向后摆动的半个步态周期发射连续的柔和彩虹光晕与分叉闪电；另一只脚随后接力。踩踏时再生成大小不一的卡通烟团。点击加速冲刺，步频和闪电强度同步提升。两种效果均使用对象池，方便接入 Three.js 游戏。</p></div>
         <a href="https://github.com/GioGyan90/3d_React_test2/tree/main/running-dust/" target="_blank" rel="noopener noreferrer">查看源代码 ↗</a>
       </section>
     </main>
     <footer><span>LUCKY BREAK / FX STUDIES</span><span>07 · RUNNING DUST</span></footer>
   </div>
   <script type="module">
-    import("./scene.js?v=1").catch((error) => {
+    import("./scene.js?v=lightning-1").catch((error) => {
       console.error("[running-dust] Could not start 3D scene:", error);
       document.querySelector("#error").hidden = false;
       document.querySelector("#live-phase").textContent = "UNAVAILABLE";
