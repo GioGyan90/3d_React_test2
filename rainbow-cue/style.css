@@ -36,3 +36,24 @@ footer{height:78px;border-top:1px solid #ffffff16;color:#647e8a;font-size:9px;di
 .palette-check{color:#c5f4df;font-size:10px;opacity:0}
 .palette-choice[aria-pressed=true] .palette-check{opacity:1}
 @media(max-width:560px){.palette-choice{padding:9px;gap:8px}.palette-swatch{width:28px;height:30px}.palette-choice small{font-size:7px}}
+
+/* Always-visible palette controls above the 3D viewport, rather than below the fold. */
+.stage-top{min-height:70px;height:auto;flex-wrap:wrap;padding:10px 25px;gap:10px}
+.stage-palette{flex-direction:row;align-items:center;gap:12px;letter-spacing:normal}
+.stage-palette-label{white-space:nowrap;color:#cce4e6;font:600 11px Inter,"PingFang SC",sans-serif}
+.stage-palette .palette-options{display:flex;gap:8px}
+.stage-palette .palette-choice{padding:7px 10px;min-height:38px;gap:7px}
+.stage-palette .palette-swatch{width:23px;height:24px}
+.stage-palette .palette-choice>span:nth-child(2){display:block;white-space:nowrap;font-size:11px}
+.stage-palette .palette-choice small{display:none}
+.stage-palette .palette-check{font-size:9px}
+@media(max-width:640px){
+  .stage-top{padding:10px 15px;gap:10px}
+  .stage-palette{width:100%;justify-content:space-between;gap:6px}
+  .stage-palette-label{font-size:10px}
+  .stage-palette .palette-options{gap:5px}
+  .stage-palette .palette-choice{min-height:39px;padding:6px 8px;gap:6px}
+  .stage-palette .palette-swatch{width:17px;height:22px}
+  .stage-palette .palette-choice>span:nth-child(2){font-size:10px}
+  .stage-palette .palette-check{display:none}
+}
