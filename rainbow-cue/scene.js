@@ -138,36 +138,69 @@ const shadow = new THREE.Mesh(
 shadow.rotation.x = -Math.PI / 2;
 shadow.position.set(START_X, .01, 0); scene.add(shadow);
 
-// Seven parallel, three-dimensional rainbow bands.
-// Individual vertex alpha creates a smoothly tapering light wake.
+// One continuous curved rainbow surface. The seven palette colors overlap
+// smoothly in the *fragment shader*, instead of seven separately rendered strips.
 const rainbowColors = [
   '#ff7295', '#ffae73', '#ffe18e', '#98f5a9',
   '#6fdfec', '#75a9ff', '#bf8bff'
 ].map(hex => new THREE.Color(hex));
-const MAX_VERTICES = BAND_COUNT * (POINT_CAPACITY - 1) * 6;
+const CROSS_STEPS = 6; // geometry subdivisions are invisible, not color bands
+const MAX_VERTICES = CROSS_STEPS * (POINT_CAPACITY - 1) * 6;
 const positions = new Float32Array(MAX_VERTICES * 3);
-const tints = new Float32Array(MAX_VERTICES * 3);
+const across = new Float32Array(MAX_VERTICES);
 const alphas = new Float32Array(MAX_VERTICES);
+const flows = new Float32Array(MAX_VERTICES);
 const ribbonGeo = new THREE.BufferGeometry();
 ribbonGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-ribbonGeo.setAttribute('aTint', new THREE.BufferAttribute(tints, 3));
+ribbonGeo.setAttribute('aAcross', new THREE.BufferAttribute(across, 1));
 ribbonGeo.setAttribute('aOpacity', new THREE.BufferAttribute(alphas, 1));
+ribbonGeo.setAttribute('aFlow', new THREE.BufferAttribute(flows, 1));
 ribbonGeo.setDrawRange(0, 0);
 const ribbonMat = new THREE.ShaderMaterial({
+  uniforms: {
+    uTime: { value: 0 },
+    uColors: { value: rainbowColors }
+  },
   vertexShader: [
-    'attribute vec3 aTint;',
+    'attribute float aAcross;',
     'attribute float aOpacity;',
-    'varying vec3 vTint;',
+    'attribute float aFlow;',
+    'varying float vAcross;',
     'varying float vOpacity;',
-    'void main(){',
-    'vTint = aTint; vOpacity = aOpacity;',
-    'gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0);',
+    'varying float vFlow;',
+    'void main() {',
+    '  vAcross = aAcross;',
+    '  vOpacity = aOpacity;',
+    '  vFlow = aFlow;',
+    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
     '}'
   ].join('\n'),
   fragmentShader: [
-    'varying vec3 vTint;',
+    'uniform vec3 uColors[7];',
+    'uniform float uTime;',
+    'varying float vAcross;',
     'varying float vOpacity;',
-    'void main(){ gl_FragColor = vec4(vTint, vOpacity); }'
+    'varying float vFlow;',
+    'void main() {',
+    '  float u = clamp(vAcross + .032 * sin(vFlow * 2.25 + uTime * 1.15 + vAcross * 4.2), 0.0, 1.0);',
+    '  float s = u * 6.0;',
+    '  float total = 0.0;',
+    '  vec3 color = vec3(0.0);',
+    // seven overlapping broad Gaussian lobes remove any color-strip boundary
+    '  float w0 = exp(-0.5 * pow((s - 0.0) / 1.32, 2.0));',
+    '  float w1 = exp(-0.5 * pow((s - 1.0) / 1.32, 2.0));',
+    '  float w2 = exp(-0.5 * pow((s - 2.0) / 1.32, 2.0));',
+    '  float w3 = exp(-0.5 * pow((s - 3.0) / 1.32, 2.0));',
+    '  float w4 = exp(-0.5 * pow((s - 4.0) / 1.32, 2.0));',
+    '  float w5 = exp(-0.5 * pow((s - 5.0) / 1.32, 2.0));',
+    '  float w6 = exp(-0.5 * pow((s - 6.0) / 1.32, 2.0));',
+    '  total = w0 + w1 + w2 + w3 + w4 + w5 + w6;',
+    '  color = (uColors[0] * w0 + uColors[1] * w1 + uColors[2] * w2',
+    '    + uColors[3] * w3 + uColors[4] * w4 + uColors[5] * w5 + uColors[6] * w6) / total;',
+    '  float softSides = smoothstep(0.0, .17, vAcross) * (1.0 - smoothstep(.83, 1.0, vAcross));',
+    '  float silkyFlow = .92 + .08 * sin(vFlow * 11.0 - uTime * 4.2);',
+    '  gl_FragColor = vec4(color, vOpacity * softSides * silkyFlow);',
+    '}'
   ].join('\n'),
   transparent: true, depthWrite: false,
   blending: THREE.AdditiveBlending, side: THREE.DoubleSide
@@ -175,7 +208,6 @@ const ribbonMat = new THREE.ShaderMaterial({
 const ribbon = new THREE.Mesh(ribbonGeo, ribbonMat);
 ribbon.renderOrder = 2;
 ribbon.frustumCulled = false; scene.add(ribbon);
-
 const starTexture = makeFourPointTexture();
 const stars = Array.from({ length: reducedMotion ? 48 : 100 }, () => {
   const material = new THREE.SpriteMaterial({
@@ -308,15 +340,16 @@ function updateMovement(dt) {
   }
   removeExpiredPoints(); ageStars();
 }
-function trailPoint(sample, band, side, ageT) {
-  const lateral = (band - (BAND_COUNT - 1) * .5) * .115;
-  const taper = .8 + .26 * (1 - ageT);
-  const wave = Math.sin(time * 7.7 - sample.x * 2.7 + band * .75) *
-    (.04 + ageT * .09);
-  const z = lateral * taper + wave + side * (.055 + .02 * (1 - ageT));
-  const y = .38 + .13 * Math.sin(band / (BAND_COUNT - 1) * Math.PI)
-    + Math.cos(sample.x * 2.8 - time * 5.5 + band * .41) *
-      (.025 + .07 * ageT) + ageT * .1;
+function trailPoint(sample, fraction, ageT) {
+  // A single flowing sheet: cross-sectional geometry is connected everywhere.
+  const centered = fraction * 2 - 1;
+  const width = (.86 + .24 * (1 - ageT)) * (.88 + .05 * Math.sin(time * 2.7 - sample.x));
+  const lateral = centered * width * .5;
+  const wave = Math.sin(time * 6.8 - sample.x * 2.5 + fraction * 2.4) * (.06 + ageT * .07);
+  const z = lateral + wave;
+  const y = .39 + .12 * (1 - centered * centered)
+    + .054 * Math.sin(sample.x * 2.9 - time * 4.2 + fraction * 2.1)
+    + ageT * .075;
   return [sample.x, y, z];
 }
 function updateRibbon() {
@@ -325,34 +358,36 @@ function updateRibbon() {
     ? [...trail, { x: ball.position.x - RADIUS * .74, born: time }]
     : trail;
   let vertex = 0;
-  function put(pos, color, opacity) {
+  function put(pos, acrossValue, opacity, flow) {
     const k = vertex * 3;
     positions[k] = pos[0]; positions[k + 1] = pos[1]; positions[k + 2] = pos[2];
-    tints[k] = color.r; tints[k + 1] = color.g; tints[k + 2] = color.b;
+    across[vertex] = acrossValue;
     alphas[vertex] = opacity;
+    flows[vertex] = flow;
     vertex++;
   }
-  for (let band = 0; band < BAND_COUNT; band++) {
-    const tint = rainbowColors[band];
-    for (let i = 0; i < pts.length - 1 && vertex + 6 <= MAX_VERTICES; i++) {
-      const a = pts[i], b = pts[i + 1];
-      if (b.x - a.x < .0001) continue;
-      const ageA = clamp((time - a.born) / TRAIL_LIFETIME, 0, 1);
-      const ageB = clamp((time - b.born) / TRAIL_LIFETIME, 0, 1);
-      const opacityA = Math.pow(1 - ageA, 1.5) * .64;
-      const opacityB = Math.pow(1 - ageB, 1.5) * .64;
-      const aL = trailPoint(a, band, -1, ageA);
-      const aR = trailPoint(a, band, 1, ageA);
-      const bL = trailPoint(b, band, -1, ageB);
-      const bR = trailPoint(b, band, 1, ageB);
-      put(aL, tint, opacityA); put(aR, tint, opacityA); put(bL, tint, opacityB);
-      put(bL, tint, opacityB); put(aR, tint, opacityA); put(bR, tint, opacityB);
+  for (let i = 0; i < pts.length - 1 && vertex + CROSS_STEPS * 6 <= MAX_VERTICES; i++) {
+    const a = pts[i], b = pts[i + 1];
+    if (b.x - a.x < .0001) continue;
+    const ageA = clamp((time - a.born) / TRAIL_LIFETIME, 0, 1);
+    const ageB = clamp((time - b.born) / TRAIL_LIFETIME, 0, 1);
+    const opacityA = Math.pow(1 - ageA, 1.5) * .85;
+    const opacityB = Math.pow(1 - ageB, 1.5) * .85;
+    for (let slice = 0; slice < CROSS_STEPS; slice++) {
+      const u0 = slice / CROSS_STEPS;
+      const u1 = (slice + 1) / CROSS_STEPS;
+      const a0 = trailPoint(a, u0, ageA), a1 = trailPoint(a, u1, ageA);
+      const b0 = trailPoint(b, u0, ageB), b1 = trailPoint(b, u1, ageB);
+      put(a0, u0, opacityA, a.x); put(a1, u1, opacityA, a.x); put(b0, u0, opacityB, b.x);
+      put(b0, u0, opacityB, b.x); put(a1, u1, opacityA, a.x); put(b1, u1, opacityB, b.x);
     }
   }
   ribbonGeo.setDrawRange(0, vertex);
   ribbonGeo.attributes.position.needsUpdate = true;
-  ribbonGeo.attributes.aTint.needsUpdate = true;
+  ribbonGeo.attributes.aAcross.needsUpdate = true;
   ribbonGeo.attributes.aOpacity.needsUpdate = true;
+  ribbonGeo.attributes.aFlow.needsUpdate = true;
+  ribbonMat.uniforms.uTime.value = time;
 }
 function updateCamera(dt) {
   const target = ball.position.x - .70;
