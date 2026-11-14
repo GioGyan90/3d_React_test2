@@ -20,3 +20,19 @@ footer{height:78px;border-top:1px solid #ffffff16;color:#647e8a;font-size:9px;di
 @media(max-width:850px){.app{padding:0 26px}.intro-spark{display:none}.controls{grid-template-columns:1fr;gap:27px}.control-right{max-width:620px}.stage-view{height:480px}.details{align-items:start;flex-direction:column}}
 @media(max-width:560px){.app{padding:0 17px}.topbar{height:65px;align-items:center}.brand{font-size:9px;gap:8px}.brand-icon{width:23px;height:23px;font-size:15px}.nav-links{gap:12px;font-size:9px}.nav-links a:first-child{display:none}.intro{padding:38px 0 35px}h1{font-size:42px}.lead{font-size:12px}.stage-top{padding:0 16px;font-size:9px;height:48px}.stage-view{height:425px}.upper-left{left:15px;top:17px}.upper-left strong{font-size:16px}.upper-right{right:15px;top:19px}.lower-left{left:15px;bottom:17px;font-size:8px}.lower-right{right:15px;bottom:17px;font-size:8px}.stage-bottom{gap:9px;padding:0 13px;height:56px}.pill-label{font-size:9px;min-width:60px}.unit-readout small{display:none}.unit-readout strong{font-size:15px}.controls{padding:35px 0 42px}.control-intro h2,.details h2{font-size:22px}.btn{padding:0 15px}.reset{min-width:96px}.details{padding:36px 0 44px}footer{height:65px;font-size:8px}}
 @media(prefers-reduced-motion:reduce){.phase-meter>div,.btn{transition:none}}
+/* Palette presets: warm peach/rose and cool mint/lavender, not seven sharp hues. */
+.palette-picker{display:flex;flex-direction:column;gap:12px}
+.palette-head{display:flex;justify-content:space-between;gap:12px;color:#8da6b1;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:10px;letter-spacing:.1em}
+.palette-head span:last-child{font-size:9px;color:#74919d}
+.palette-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.palette-choice{min-width:0;display:flex;align-items:center;gap:12px;padding:10px 12px;border:1px solid #c4d9e02b;border-radius:7px;background:#162533;color:#c7d8dc;text-align:left;font-size:11px;font-weight:600;transition:border-color .17s,background .17s,box-shadow .17s}
+.palette-choice:hover{border-color:#c2e8e6a8;background:#1c3042}
+.palette-choice[aria-pressed=true]{border-color:#b4e7e2;background:#23404a;box-shadow:inset 0 0 0 1px #b4e7e121}
+.palette-choice>span:nth-child(2){display:flex;flex:1;flex-direction:column;gap:4px}
+.palette-choice small{font-family:ui-monospace,monospace;color:#859eaa;font-size:8px;letter-spacing:.05em;font-weight:400}
+.palette-swatch{height:32px;width:40px;flex:none;border-radius:4px;box-shadow:0 0 18px #ffffff18,inset 0 0 10px #ffffff38}
+.warm-swatch{background:linear-gradient(110deg,#ffe0b4,#ffc1ab,#ffabc2,#eda5d5,#d9b5e8)}
+.cool-swatch{background:linear-gradient(110deg,#c0f5e5,#9de9de,#90dcea,#98c4f2,#b8b5ee)}
+.palette-check{color:#c5f4df;font-size:10px;opacity:0}
+.palette-choice[aria-pressed=true] .palette-check{opacity:1}
+@media(max-width:560px){.palette-choice{padding:9px;gap:8px}.palette-swatch{width:28px;height:30px}.palette-choice small{font-size:7px}}
