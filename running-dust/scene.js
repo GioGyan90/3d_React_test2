@@ -1,4 +1,5 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js';
+import { LightningRainbowTrail } from './lightning-trail.js?v=1';
 
 // Running Dust · independent Lucky Break Three.js visual prototype.
 // Multiple low-poly smoke blobs emit ONLY on planted foot contact, fly toward
@@ -20,6 +21,13 @@ const phaseLabel = $('live-phase');
 const puffReadout = $('puff-count');
 const activeReadout = $('active-count');
 const cycleReadout = $('cycle-count');
+const electricReadout = $('electric-count');
+const electricToggle = $('electric-toggle');
+const electricToggleText = $('electric-toggle-text');
+const boostButton = $('boost');
+const boostState = $('boost-state');
+const boostFill = $('boost-fill');
+const electricToneButtons = [...document.querySelectorAll('[data-electric-tone]')];
 const toneButtons = [...document.querySelectorAll('[data-tone]')];
 const clamp = (x, min, max) => Math.max(min, Math.min(max, x));
 const random = (min, max) => min + Math.random() * (max - min);
@@ -132,7 +140,7 @@ for (let leg = 0; leg < 2; leg++) {
   scene.add(upper, lower, knee, foot);
   legParts.push({ side, upper, lower, knee, foot, previousAir: false });
 }
-function animateLegs(phase, landing = true) {
+function animateLegs(phase, landing = true, dt = 0, power = 1) {
   for (let i = 0; i < legParts.length; i++) {
     const part = legParts[i];
     const a = phase + i * Math.PI;
@@ -149,8 +157,17 @@ function animateLegs(phase, landing = true) {
     part.knee.position.set(...knee);
     part.foot.position.set(ankleX, ankleY, part.side);
     part.foot.rotation.z = inAir ? -.13 + .15 * Math.cos(a) : 0;
+    // The backward-moving lifted foot leaves an electric trail. Both feet
+    // alternate naturally because their gait phases differ by PI.
+    if (landing && inAir && Math.sin(a) > .08 && dt > 0) {
+      lightning.trace(i, {
+        x: ankleX - .23,
+        y: platformTop + .145 + Math.min(.07, lift * .18),
+        z: part.side
+      }, dt, power);
+    }
     if (landing && part.previousAir && !inAir) {
-      emitFootImpact(ankleX - .25, part.side);
+      emitFootImpact(ankleX - .25, part.side, false, i, power);
     }
     part.previousAir = inAir;
   }
@@ -273,6 +290,11 @@ export class DustEmitter {
   }
 }
 const dust = new DustEmitter(scene);
+const lightning = new LightningRainbowTrail(scene);
+const BOOST_TIME = 3.4;
+let boostRemaining = 0;
+let boostStrength = 0;
+let electricEnabled = true;
 let speed = Number(speedInput.value);
 let density = Number(densityInput.value);
 let running = true;
@@ -280,16 +302,20 @@ let phase = .35;
 let pointer = null;
 const frame = { id: 0 };
 
-function emitFootImpact(x, z, manual = false) {
+function emitFootImpact(x, z, manual = false, footIndex = impacts % 2, energy = 1) {
   impacts++;
   const amount = reducedMotion ? Math.min(4, density) : density;
   dust.burst(x, z, amount, manual ? 1.1 : 1);
+  lightning.impact(footIndex, { x, y: platformTop + .12, z }, energy);
   emittedTotal = dust.total;
 }
 function reset() {
   running = false;
   phase = .35;
   dust.clear();
+  lightning.clear();
+  boostRemaining = 0;
+  boostStrength = 0;
   dust.total = 0;
   impacts = 0;
   emittedTotal = 0;
@@ -302,12 +328,16 @@ function updateButtons() {
   toggleLabel.textContent = running ? '暂停跑步' : '继续跑步';
   toggleIcon.textContent = running ? 'Ⅱ' : '▶';
   toggleButton.setAttribute('aria-pressed', String(running));
-  phaseLabel.textContent = running ? 'RUNNING' : 'PAUSED';
+  phaseLabel.textContent = running ? (boostRemaining > 0 ? 'BOOSTING' : 'RUNNING') : 'PAUSED';
+  boostButton.setAttribute('aria-pressed', String(boostRemaining > 0));
+  boostState.textContent = boostRemaining > 0 ? 'BOOST ACTIVE' : 'READY';
+  boostFill.style.width = (boostStrength * 100).toFixed(0) + '%';
 }
 function updateReadouts() {
   puffReadout.textContent = String(emittedTotal).padStart(3, '0');
   activeReadout.textContent = String(dust.active).padStart(2, '0');
   cycleReadout.textContent = String(Math.floor(impacts / 2)).padStart(2, '0');
+  electricReadout.textContent = String(lightning.active).padStart(3, '0');
 }
 function cameraView() {
   const flat = Math.cos(altitude) * distance;
@@ -321,6 +351,7 @@ function resize() {
   const w = Math.max(1, Math.round(r.width));
   const h = Math.max(1, Math.round(r.height));
   renderer.setSize(w, h, false);
+  lightning.resize(h, Math.min(2, window.devicePixelRatio || 1), camera.fov);
   camera.aspect = w / h;
   camera.updateProjectionMatrix();
 }
@@ -328,11 +359,19 @@ function animate() {
   frame.id = requestAnimationFrame(animate);
   const dt = document.hidden ? 0 : Math.min(.05, clock.getDelta());
   if (running && dt > 0) {
-    // Alternating feet: each leg makes contact once per full stride.
-    phase += dt * speed * 2.1 * Math.PI;
-    animateLegs(phase, true);
+    if (boostRemaining > 0) boostRemaining = Math.max(0, boostRemaining - dt);
+    const sinceLaunch = BOOST_TIME - boostRemaining;
+    boostStrength = boostRemaining > 0
+      ? smooth(sinceLaunch / .50) * smooth(boostRemaining / .78)
+      : 0;
+    // Acceleration affects both cadence and the length/intensity of electric FX.
+    const effectiveSpeed = speed * (1 + 1.22 * boostStrength);
+    phase += dt * effectiveSpeed * 2.1 * Math.PI;
+    animateLegs(phase, true, dt, .9 + 1.55 * boostStrength);
   }
   dust.update(dt);
+  lightning.update(dt);
+  updateButtons();
   cameraView();
   updateReadouts();
   renderer.render(scene, camera);
@@ -347,8 +386,28 @@ densityInput.addEventListener('input', () => {
   densityOutput.textContent = String(density) + ' 团 / 脚';
 });
 toggleButton.addEventListener('click', () => { running = !running; updateButtons(); });
+boostButton.addEventListener('click', () => {
+  running = true;
+  boostRemaining = BOOST_TIME;
+  boostStrength = .02;
+  updateButtons();
+});
+electricToggle.addEventListener('click', () => {
+  electricEnabled = !electricEnabled;
+  lightning.setEnabled(electricEnabled);
+  electricToggle.setAttribute('aria-pressed', String(electricEnabled));
+  electricToggleText.textContent = electricEnabled ? 'ON' : 'OFF';
+  updateReadouts();
+});
+electricToneButtons.forEach(button => button.addEventListener('click', () => {
+  const selected = button.dataset.electricTone;
+  lightning.setPalette(selected);
+  electricToneButtons.forEach(b =>
+    b.setAttribute('aria-pressed', String(b.dataset.electricTone === selected)));
+}));
 stepButton.addEventListener('click', () => {
-  emitFootImpact(RUNNER_X - .6, legParts[impacts % 2].side, true);
+  const footIndex = impacts % 2;
+  emitFootImpact(RUNNER_X - .6, legParts[footIndex].side, true, footIndex, .95 + 1.55 * boostStrength);
   updateReadouts();
 });
 clearButton.addEventListener('click', reset);
@@ -398,6 +457,7 @@ window.addEventListener('pagehide', () => {
   cancelAnimationFrame(frame.id);
   observer?.disconnect();
   dust.dispose();
+  lightning.dispose();
   cloudGeo.dispose();
   renderer.dispose();
   upperGeom.dispose(); lowerGeom.dispose(); kneeGeom.dispose();
