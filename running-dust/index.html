@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0a1520" />
+  <meta name="description" content="Lucky Break 特效展览馆：Three.js 跑步脚下的卡通扬尘，错落烟团后退、上浮、扩散与消散。" />
+  <title>Running Dust · 跑步扬尘特效 | Lucky Break</title>
+  <link rel="stylesheet" href="./style.css?v=1" />
+</head>
+<body>
+  <div class="shell">
+    <header class="nav">
+      <a class="identity" href="../elemental-pocket/" aria-label="返回特效展览馆"><span class="symbol">✳</span> LUCKY BREAK <span class="muted">/ FX GALLERY</span></a>
+      <div class="nav-right"><a href="../elemental-pocket/">进球特效</a><a href="../power-charge/">力量槽</a><a href="../rainbow-cue/">彩虹拖尾</a><span class="nav-now">跑步扬尘</span></div>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <p class="overline"><span>07 / ENVIRONMENTAL FX</span> · THREE.JS EXPERIENCE</p>
+          <h1>脚步落下，<br /><em>尘土飞扬。</em></h1>
+          <p class="intro-copy">几团大小不一的卡通烟雾从落脚点向后弹开，轻轻漂浮、膨胀并消散。用简约低模鞋腿演示节奏与脚底发射位置。</p>
+        </div>
+        <div class="intro-mark" aria-hidden="true">〰</div>
+      </div>
+
+      <section class="viewer" aria-label="跑步扬尘实时三维展览">
+        <div class="viewer-top">
+          <span><i class="signal"></i> LIVE EFFECT PREVIEW</span>
+          <span class="view-mode">RUNNING DUST · CARTOON SMOKE</span>
+        </div>
+        <div class="viewport" id="viewport">
+          <canvas id="scene" aria-label="低模跑步角色双脚交替落地，后方出现大小错落的卡通尘土烟团"></canvas>
+          <div class="view-label top-left">DUST STUDY<br/><b>踏步 / 扬尘</b></div>
+          <div class="view-label top-right"><span id="live-phase">RUNNING</span><br />KINETIC FX / 03</div>
+          <div class="view-label bottom-left">拖动旋转视角 · 滚轮缩放</div>
+          <div class="view-label bottom-right">WORLD SPACE / 3D</div>
+          <div id="error" class="error" hidden role="alert">Three.js 场景无法初始化。请检查 WebGL 是否开启，以及能否访问 Three.js CDN。</div>
+        </div>
+        <div class="viewer-foot">
+          <div class="readout"><span>EMITTED PUFFS</span><strong id="puff-count">000</strong></div>
+          <div class="viewer-foot-line"></div>
+          <div class="readout"><span>ACTIVE CLOUDS</span><strong id="active-count">00</strong></div>
+          <div class="viewer-foot-line"></div>
+          <div class="readout"><span>RUN CYCLE</span><strong id="cycle-count">00</strong></div>
+        </div>
+      </section>
+
+      <section class="workbench">
+        <div class="workbench-head">
+          <p class="overline">02 / INTERACTION</p>
+          <h2>调节脚步与烟尘</h2>
+          <p>点击开始/暂停观察节奏，也可以单独触发一次踩踏。参数实时生效，方便之后提取成游戏通用的脚步特效组件。</p>
+        </div>
+        <div class="controls">
+          <div class="sliders">
+            <div class="slider-head"><label for="speed">跑步节奏</label><output id="speed-output" for="speed">1.00×</output></div>
+            <input type="range" id="speed" min="0.5" max="2.0" value="1" step="0.05" aria-label="跑步节奏"/>
+            <div class="minmax"><span>SLOW</span><span>FAST</span></div>
+            <div class="slider-head second"><label for="density">烟尘数量</label><output id="density-output" for="density">5 团 / 脚</output></div>
+            <input type="range" id="density" min="2" max="9" value="5" step="1" aria-label="每次踩踏的烟尘数量"/>
+            <div class="minmax"><span>SPARSE</span><span>DENSE</span></div>
+          </div>
+          <div class="control-actions">
+            <div class="dust-colors" role="group" aria-label="扬尘配色">
+              <button type="button" data-tone="sand" aria-pressed="true"><span class="swatch sand"></span>暖沙色</button>
+              <button type="button" data-tone="slate" aria-pressed="false"><span class="swatch slate"></span>冷灰色</button>
+            </div>
+            <div class="buttons">
+              <button type="button" id="toggle" class="primary"><span id="toggle-icon">Ⅱ</span><span id="toggle-label">暂停跑步</span></button>
+              <button type="button" id="step" class="secondary">单次踩踏 <span>↗</span></button>
+            </div>
+            <button type="button" id="clear" class="clear">↺ 清空烟尘并复位</button>
+          </div>
+        </div>
+      </section>
+      <section class="explain">
+        <div><p class="overline">HOW IT WORKS</p><h2>每次落脚，独立生成一簇烟团。</h2><p>脚步触地瞬间生成 2–9 团大小、初速各异的低多边形云朵；烟团向角色身后散开并轻微上浮、膨胀，最后透明消失。烟团使用对象池复用，方便嵌入 Three.js 游戏。</p></div>
+        <a href="https://github.com/GioGyan90/3d_React_test2/tree/main/running-dust/" target="_blank" rel="noopener noreferrer">查看源代码 ↗</a>
+      </section>
+    </main>
+    <footer><span>LUCKY BREAK / FX STUDIES</span><span>07 · RUNNING DUST</span></footer>
+  </div>
+  <script type="module">
+    import("./scene.js?v=1").catch((error) => {
+      console.error("[running-dust] Could not start 3D scene:", error);
+      document.querySelector("#error").hidden = false;
+      document.querySelector("#live-phase").textContent = "UNAVAILABLE";
+    });
+  </script>
+</body>
+</html>
