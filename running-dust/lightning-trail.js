@@ -172,7 +172,7 @@ export class LightningRainbowTrail {
     it.vx=-random(1.6,3.55)*(0.65+.55*strength);
     it.vy=random(-.09,.16);
     it.vz=random(-.23,.23);
-    it.size=random(.11,.23)*(1+.25*strength);
+    it.size=random(.19,.34)*(1+.28*strength);
     it.spark=Math.random()<.19?1:0;
     if(it.spark)it.size*=random(.62,1.14);
     it.energy=strength;
@@ -205,8 +205,8 @@ export class LightningRainbowTrail {
     if(!this.enabled||dt<=0||!Number.isFinite(position.x))return;
     const strength=clamp(intensity,.45,2.6);
     const i=foot===0?0:1;
-    this.lightAcc[i]+=dt*(this.reduced?17:35)*(0.7+.43*strength);
-    const sparkRate=4.4+(strength-1)*5;
+    this.lightAcc[i]+=dt*(this.reduced?19:45)*(0.7+.43*strength);
+    const sparkRate=6.3+(strength-1)*6;
     this.arcAcc[i]+=dt*Math.max(2,sparkRate);
     let safeguard=0;
     while(this.lightAcc[i]>=1 && safeguard++<14){
@@ -252,7 +252,7 @@ export class LightningRainbowTrail {
       p[k]=it.x;p[k+1]=it.y;p[k+2]=it.z;
       const color=this.colorAt(it.foot,it.hue);
       c[k]=color.r;c[k+1]=color.g;c[k+2]=color.b;
-      a[count]=(it.spark?.67:.22)*fade*(.75+.25*Math.sin(this.time*16+it.hue*18)**2);
+      a[count]=(it.spark?.86:.35)*fade*(.75+.25*Math.sin(this.time*16+it.hue*18)**2);
       s[count]=it.size*(.8+.55*t)*(it.spark?.72:1)*(.9+.15*energy);
       spark[count]=it.spark;
       count++;
