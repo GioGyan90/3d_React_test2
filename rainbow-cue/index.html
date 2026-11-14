@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1421">
   <meta name="description" content="Lucky Break Three.js 母球彩虹拖尾实验：击打、滚动衰减、柔和暖冷渐变光雾与闪烁四角星。">
   <title>Rainbow Cue · 母球彩虹拖尾</title>
-  <link rel="stylesheet" href="./style.css?v=height-tuner-1">
+  <link rel="stylesheet" href="./style.css?v=height-final-0260-0120">
 </head>
 <body>
   <div class="app">
@@ -38,32 +38,6 @@
               <button class="palette-choice" type="button" data-palette="warm" aria-pressed="true"><span class="palette-swatch warm-swatch" aria-hidden="true"></span><span>暖色光雾 <small>PEACH / ROSE</small></span><span class="palette-check">●</span></button>
               <button class="palette-choice" type="button" data-palette="cool" aria-pressed="false"><span class="palette-swatch cool-swatch" aria-hidden="true"></span><span>冷色光雾 <small>MINT / LAVENDER</small></span><span class="palette-check">●</span></button>
             </div>
-          </div>
-        </div>
-        <!-- Temporary visual calibration controls; remove after parameters are approved. -->
-        <div class="height-tuner" id="height-tuner" aria-label="临时高度调参面板">
-          <div class="tuner-intro"><span class="tuner-heading">高度调试 <small>HEIGHT TUNING / TEMPORARY</small></span>
-            <span class="tuner-hint">拉动实时调整 · 数值在下方显示 · 刷新后保留</span>
-          </div>
-          <div class="tuner-controls">
-            <div class="tuner-control">
-              <div class="tuner-label"><label for="trail-height">彩色拖尾高度</label><output for="trail-height" id="trail-height-output">0.095</output></div>
-              <input type="range" id="trail-height" min="0.015" max="0.260" step="0.005" value="0.095" aria-label="彩色拖尾离桌面高度">
-              <div class="tuner-ends"><span>贴近台面</span><span>高于台面</span></div>
-            </div>
-            <div class="tuner-control">
-              <div class="tuner-label"><label for="star-height-offset">四角星高度偏移</label><output for="star-height-offset" id="star-height-output">+0.000</output></div>
-              <input type="range" id="star-height-offset" min="-0.100" max="0.120" step="0.005" value="0.000" aria-label="四角星相对高度偏移">
-              <div class="tuner-ends"><span>降低</span><span>升高</span></div>
-            </div>
-          </div>
-          <div class="tuner-footer">
-            <code id="height-parameters" aria-live="polite">TRAIL_CONTACT_Y=0.095; STAR_Y_OFFSET=+0.000</code>
-            <div class="tuner-actions">
-              <button type="button" id="tuning-reset">恢复默认</button>
-              <button type="button" id="copy-height-params">复制参数</button>
-            </div>
-            <span id="copy-height-feedback" role="status" aria-live="polite"></span>
           </div>
         </div>
         <div class="stage-view" id="stage-view">
@@ -105,7 +79,7 @@
     <footer><span>LUCKY BREAK / FX LAB</span><span>RAINBOW CUE · EXPERIMENT 06</span></footer>
   </div>
   <script type="module">
-    import("./scene.js?v=height-tuner-1").catch((error) => {
+    import("./scene.js?v=height-final-0260-0120").catch((error) => {
       console.error("Rainbow Cue failed to load", error);
       const warning = document.querySelector("#scene-error");
       if (warning) warning.hidden = false;
