@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1421">
   <meta name="description" content="Lucky Break Three.js 母球彩虹拖尾实验：击打、滚动衰减、柔和暖冷渐变光雾与闪烁四角星。">
   <title>Rainbow Cue · 母球彩虹拖尾</title>
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=height-tuner-1">
 </head>
 <body>
   <div class="app">
@@ -105,7 +105,7 @@
     <footer><span>LUCKY BREAK / FX LAB</span><span>RAINBOW CUE · EXPERIMENT 06</span></footer>
   </div>
   <script type="module">
-    import("./scene.js").catch((error) => {
+    import("./scene.js?v=height-tuner-1").catch((error) => {
       console.error("Rainbow Cue failed to load", error);
       const warning = document.querySelector("#scene-error");
       if (warning) warning.hidden = false;
