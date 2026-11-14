@@ -14,13 +14,15 @@ const speedLabel = $('#speed-value');
 const speedFill = $('#speed-fill');
 const phaseLabel = $('#phase-label');
 const renderStatus = $('#render-status');
+const paletteButtons = [...document.querySelectorAll('[data-palette]')];
 
 const RADIUS = 0.56;
 const START_X = -2.6;
 const FRICTION = 2.35; // units / s^2
 const TRAIL_LIFETIME = 2.8;
 const POINT_CAPACITY = 165;
-const BAND_COUNT = 7;
+const CLOUD_SLICES = 11;
+const CLOUD_LAYERS = 2;
 const MIN_SPEED = 0.03;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const random = (lo, hi) => lo + Math.random() * (hi - lo);
@@ -138,76 +140,91 @@ const shadow = new THREE.Mesh(
 shadow.rotation.x = -Math.PI / 2;
 shadow.position.set(START_X, .01, 0); scene.add(shadow);
 
-// One continuous curved rainbow surface. The seven palette colors overlap
-// smoothly in the *fragment shader*, instead of seven separately rendered strips.
-const rainbowColors = [
-  '#ff7295', '#ffae73', '#ffe18e', '#98f5a9',
-  '#6fdfec', '#75a9ff', '#bf8bff'
-].map(hex => new THREE.Color(hex));
-const CROSS_STEPS = 6; // geometry subdivisions are invisible, not color bands
-const MAX_VERTICES = CROSS_STEPS * (POINT_CAPACITY - 1) * 6;
-const positions = new Float32Array(MAX_VERTICES * 3);
-const across = new Float32Array(MAX_VERTICES);
-const alphas = new Float32Array(MAX_VERTICES);
-const flows = new Float32Array(MAX_VERTICES);
+// An illuminated volume made of overlapping radial point sprites, not separate
+// ribbon strips. Every sprite fades to alpha 0 at its perimeter, so the trail
+// has no polygon borders, colored rails, or hard silhouettes.
+const PALETTE_HEX = {
+  warm: ['#ffe0b4', '#ffc1ab', '#ffabc2', '#eda5d5', '#d9b5e8'],
+  cool: ['#c0f5e5', '#9de9de', '#90dcea', '#98c4f2', '#b8b5ee']
+};
+const PALETTES = Object.fromEntries(
+  Object.entries(PALETTE_HEX).map(([name, hexes]) =>
+    [name, hexes.map(hex => new THREE.Color(hex))])
+);
+let activePalette = 'warm';
+let activeColors = PALETTES[activePalette];
+const workingColor = new THREE.Color();
+
+function paletteColor(t, out = workingColor) {
+  const stop = clamp(t, 0, 1) * (activeColors.length - 1);
+  const i = Math.min(activeColors.length - 2, Math.floor(stop));
+  const fract = stop - i;
+  return out.copy(activeColors[i]).lerp(activeColors[i + 1], smooth(fract));
+}
+function setPalette(name) {
+  if (!PALETTES[name]) return;
+  activePalette = name;
+  activeColors = PALETTES[name];
+  paletteButtons.forEach(button => {
+    button.setAttribute('aria-pressed', String(button.dataset.palette === name));
+  });
+  // Existing glitter recolors immediately; newly spawned stars use the same palette.
+  stars.forEach(star => {
+    if (star.active) star.sprite.material.color.copy(activeColors[star.colorIndex || 0]);
+  });
+}
+
+// Each sampled position contributes an inner pearly glow and an outer haze.
+// Using point sprites rather than adjoining translucent triangle strips prevents
+// sharp seams even while the ribbon bends or changes viewing angle.
+const MAX_CLOUD_POINTS = POINT_CAPACITY * CLOUD_SLICES * CLOUD_LAYERS;
+const positions = new Float32Array(MAX_CLOUD_POINTS * 3);
+const tints = new Float32Array(MAX_CLOUD_POINTS * 3);
+const alphas = new Float32Array(MAX_CLOUD_POINTS);
+const sizes = new Float32Array(MAX_CLOUD_POINTS);
 const ribbonGeo = new THREE.BufferGeometry();
 ribbonGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-ribbonGeo.setAttribute('aAcross', new THREE.BufferAttribute(across, 1));
+ribbonGeo.setAttribute('aTint', new THREE.BufferAttribute(tints, 3));
 ribbonGeo.setAttribute('aOpacity', new THREE.BufferAttribute(alphas, 1));
-ribbonGeo.setAttribute('aFlow', new THREE.BufferAttribute(flows, 1));
+ribbonGeo.setAttribute('aSize', new THREE.BufferAttribute(sizes, 1));
 ribbonGeo.setDrawRange(0, 0);
 const ribbonMat = new THREE.ShaderMaterial({
-  uniforms: {
-    uTime: { value: 0 },
-    uColors: { value: rainbowColors }
-  },
+  uniforms: { uPointScale: { value: 450 } },
   vertexShader: [
-    'attribute float aAcross;',
+    'attribute vec3 aTint;',
     'attribute float aOpacity;',
-    'attribute float aFlow;',
-    'varying float vAcross;',
+    'attribute float aSize;',
+    'varying vec3 vTint;',
     'varying float vOpacity;',
-    'varying float vFlow;',
+    'uniform float uPointScale;',
     'void main() {',
-    '  vAcross = aAcross;',
+    '  vTint = aTint;',
     '  vOpacity = aOpacity;',
-    '  vFlow = aFlow;',
-    '  gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);',
+    '  vec4 viewPos = modelViewMatrix * vec4(position, 1.0);',
+    '  gl_Position = projectionMatrix * viewPos;',
+    '  gl_PointSize = clamp(aSize * uPointScale / max(0.1, -viewPos.z), 1.0, 180.0);',
     '}'
   ].join('\n'),
   fragmentShader: [
-    'uniform vec3 uColors[7];',
-    'uniform float uTime;',
-    'varying float vAcross;',
+    'varying vec3 vTint;',
     'varying float vOpacity;',
-    'varying float vFlow;',
     'void main() {',
-    '  float u = clamp(vAcross + .032 * sin(vFlow * 2.25 + uTime * 1.15 + vAcross * 4.2), 0.0, 1.0);',
-    '  float s = u * 6.0;',
-    '  float total = 0.0;',
-    '  vec3 color = vec3(0.0);',
-    // seven overlapping broad Gaussian lobes remove any color-strip boundary
-    '  float w0 = exp(-0.5 * pow((s - 0.0) / 1.32, 2.0));',
-    '  float w1 = exp(-0.5 * pow((s - 1.0) / 1.32, 2.0));',
-    '  float w2 = exp(-0.5 * pow((s - 2.0) / 1.32, 2.0));',
-    '  float w3 = exp(-0.5 * pow((s - 3.0) / 1.32, 2.0));',
-    '  float w4 = exp(-0.5 * pow((s - 4.0) / 1.32, 2.0));',
-    '  float w5 = exp(-0.5 * pow((s - 5.0) / 1.32, 2.0));',
-    '  float w6 = exp(-0.5 * pow((s - 6.0) / 1.32, 2.0));',
-    '  total = w0 + w1 + w2 + w3 + w4 + w5 + w6;',
-    '  color = (uColors[0] * w0 + uColors[1] * w1 + uColors[2] * w2',
-    '    + uColors[3] * w3 + uColors[4] * w4 + uColors[5] * w5 + uColors[6] * w6) / total;',
-    '  float softSides = smoothstep(0.0, .17, vAcross) * (1.0 - smoothstep(.83, 1.0, vAcross));',
-    '  float silkyFlow = .92 + .08 * sin(vFlow * 11.0 - uTime * 4.2);',
-    '  gl_FragColor = vec4(color, vOpacity * softSides * silkyFlow);',
+    '  vec2 uv = gl_PointCoord * 2.0 - 1.0;',
+    '  float d = length(uv);',
+    '  if (d >= 1.0) discard;',
+    '  float feather = pow(max(0.0, 1.0 - d * d), 3.0);',
+    '  float haze = exp(-3.0 * d * d);',
+    '  gl_FragColor = vec4(vTint, vOpacity * feather * haze);',
     '}'
   ].join('\n'),
   transparent: true, depthWrite: false,
-  blending: THREE.AdditiveBlending, side: THREE.DoubleSide
+  blending: THREE.AdditiveBlending
 });
-const ribbon = new THREE.Mesh(ribbonGeo, ribbonMat);
+const ribbon = new THREE.Points(ribbonGeo, ribbonMat);
 ribbon.renderOrder = 2;
-ribbon.frustumCulled = false; scene.add(ribbon);
+ribbon.frustumCulled = false;
+scene.add(ribbon);
+
 const starTexture = makeFourPointTexture();
 const stars = Array.from({ length: reducedMotion ? 48 : 100 }, () => {
   const material = new THREE.SpriteMaterial({
@@ -283,11 +300,12 @@ function spawnStar() {
   s.baseY = random(.32, .99);
   s.phase = random(0, Math.PI * 2);
   s.frequency = random(7.4, 18);
+  s.colorIndex = Math.floor(random(0, activeColors.length));
   s.sprite.position.set(
     ball.position.x - random(.25, 1.1), s.baseY, random(-.50, .50)
   );
   s.sprite.material.rotation = random(-.6, .6);
-  s.sprite.material.color.copy(rainbowColors[Math.floor(random(0, BAND_COUNT))]);
+  s.sprite.material.color.copy(activeColors[s.colorIndex]);
   s.sprite.visible = true;
 }
 function ageStars() {
@@ -340,54 +358,48 @@ function updateMovement(dt) {
   }
   removeExpiredPoints(); ageStars();
 }
-function trailPoint(sample, fraction, ageT) {
-  // A single flowing sheet: cross-sectional geometry is connected everywhere.
-  const centered = fraction * 2 - 1;
-  const width = (.86 + .24 * (1 - ageT)) * (.88 + .05 * Math.sin(time * 2.7 - sample.x));
-  const lateral = centered * width * .5;
-  const wave = Math.sin(time * 6.8 - sample.x * 2.5 + fraction * 2.4) * (.06 + ageT * .07);
-  const z = lateral + wave;
-  const y = .39 + .12 * (1 - centered * centered)
-    + .054 * Math.sin(sample.x * 2.9 - time * 4.2 + fraction * 2.1)
-    + ageT * .075;
-  return [sample.x, y, z];
-}
 function updateRibbon() {
-  if (trail.length < 2) { ribbonGeo.setDrawRange(0, 0); return; }
+  // Each point is an overlapping soft glowing cloud, not a polygon-edge strip.
+  if (!trail.length) { ribbonGeo.setDrawRange(0, 0); return; }
   const pts = velocity > MIN_SPEED
     ? [...trail, { x: ball.position.x - RADIUS * .74, born: time }]
     : trail;
-  let vertex = 0;
-  function put(pos, acrossValue, opacity, flow) {
-    const k = vertex * 3;
-    positions[k] = pos[0]; positions[k + 1] = pos[1]; positions[k + 2] = pos[2];
-    across[vertex] = acrossValue;
-    alphas[vertex] = opacity;
-    flows[vertex] = flow;
-    vertex++;
-  }
-  for (let i = 0; i < pts.length - 1 && vertex + CROSS_STEPS * 6 <= MAX_VERTICES; i++) {
-    const a = pts[i], b = pts[i + 1];
-    if (b.x - a.x < .0001) continue;
-    const ageA = clamp((time - a.born) / TRAIL_LIFETIME, 0, 1);
-    const ageB = clamp((time - b.born) / TRAIL_LIFETIME, 0, 1);
-    const opacityA = Math.pow(1 - ageA, 1.5) * .85;
-    const opacityB = Math.pow(1 - ageB, 1.5) * .85;
-    for (let slice = 0; slice < CROSS_STEPS; slice++) {
-      const u0 = slice / CROSS_STEPS;
-      const u1 = (slice + 1) / CROSS_STEPS;
-      const a0 = trailPoint(a, u0, ageA), a1 = trailPoint(a, u1, ageA);
-      const b0 = trailPoint(b, u0, ageB), b1 = trailPoint(b, u1, ageB);
-      put(a0, u0, opacityA, a.x); put(a1, u1, opacityA, a.x); put(b0, u0, opacityB, b.x);
-      put(b0, u0, opacityB, b.x); put(a1, u1, opacityA, a.x); put(b1, u1, opacityB, b.x);
+  let count = 0;
+  for (const sample of pts) {
+    if (count + CLOUD_SLICES * CLOUD_LAYERS > MAX_CLOUD_POINTS) break;
+    const age = clamp((time - sample.born) / TRAIL_LIFETIME, 0, 1);
+    const fade = Math.pow(1 - smooth(age), 1.5);
+    const drift = Math.sin(time * 2.5 - sample.x * 2.8);
+    const spread = .78 + age * .20;
+    for (let slice = 0; slice < CLOUD_SLICES; slice++) {
+      const u = (slice + .5) / CLOUD_SLICES;
+      const side = u * 2 - 1;
+      const hue = clamp(u + .06 * Math.sin(sample.x * 1.35 + time * 1.0), 0, 1);
+      const color = paletteColor(hue);
+      const edgeFalloff = .55 + .45 * Math.exp(-2.5 * side * side);
+      const wave = Math.sin(sample.x * 2.1 - time * 3.0 + u * 2.5) * .085;
+      const z = side * spread * .56 + wave;
+      const y = .46 + .15 * (1 - side * side) +
+        .07 * Math.sin(sample.x * 2.6 - time * 4.2 + u * 2.0) + age * .07;
+      for (let layer = 0; layer < CLOUD_LAYERS; layer++) {
+        const k = count * 3;
+        positions[k] = sample.x + .015 * Math.sin(u * 21 + sample.x * 2.0 + layer * 1.8);
+        positions[k + 1] = y + (layer === 0 ? .04 : -.02);
+        positions[k + 2] = z;
+        tints[k] = color.r; tints[k + 1] = color.g; tints[k + 2] = color.b;
+        const flicker = .92 + .08 * Math.sin(time * 4.1 + sample.x * 7.0 + u * 5.0);
+        // Several dim clouds overlap to make one continuous gradient volume.
+        alphas[count] = (layer === 0 ? .023 : .045) * fade * edgeFalloff * flicker;
+        sizes[count] = (layer === 0 ? 1.00 : .47) * (1 + age * .12);
+        count++;
+      }
     }
   }
-  ribbonGeo.setDrawRange(0, vertex);
+  ribbonGeo.setDrawRange(0, count);
   ribbonGeo.attributes.position.needsUpdate = true;
-  ribbonGeo.attributes.aAcross.needsUpdate = true;
+  ribbonGeo.attributes.aTint.needsUpdate = true;
   ribbonGeo.attributes.aOpacity.needsUpdate = true;
-  ribbonGeo.attributes.aFlow.needsUpdate = true;
-  ribbonMat.uniforms.uTime.value = time;
+  ribbonGeo.attributes.aSize.needsUpdate = true;
 }
 function updateCamera(dt) {
   const target = ball.position.x - .70;
@@ -405,6 +417,9 @@ function resize() {
   const width = Math.max(1, Math.round(rect.width));
   const height = Math.max(1, Math.round(rect.height));
   renderer.setSize(width, height, false);
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  ribbonMat.uniforms.uPointScale.value = (height * dpr) / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov * .5)));
+
   camera.aspect = width / height;
   camera.updateProjectionMatrix();
 }
@@ -455,13 +470,16 @@ powerInput.addEventListener('input', () => {
   powerOutput.value = power + '%';
   powerOutput.textContent = power + '%';
 });
+paletteButtons.forEach(button => {
+  button.addEventListener('click', () => setPalette(button.dataset.palette));
+});
 hitButton.addEventListener('click', hit);
 resetButton.addEventListener('click', reset);
 document.addEventListener('visibilitychange', () => { clock.getDelta(); });
 window.addEventListener('resize', resize);
 const observer = new ResizeObserver(resize);
 observer.observe(viewport);
-resize(); reset(); render();
+resize(); reset(); setPalette('warm'); render();
 
 window.addEventListener('pagehide', () => {
   cancelAnimationFrame(animationId);
